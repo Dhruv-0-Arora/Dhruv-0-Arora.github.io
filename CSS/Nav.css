@@ -52,6 +52,18 @@ nav ul li a:hover {
     transition: .5s;
 }
 
+ul li ul.dropdown li {
+    display: block;
+}
+
+ul li ul.dropdown {
+    width: 100%;
+    background: #363636;
+    position: absolute;
+    z-index: 999;
+    display: none;
+}
+
 .checkbtn {
     font-size: 30px;
     color: white;
