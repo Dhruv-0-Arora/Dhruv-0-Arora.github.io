@@ -64,6 +64,10 @@ ul li ul.dropdown {
     display: none;
 }
 
+ul li:hover ul.dropdown {
+    display: block;
+}
+
 .checkbtn {
     font-size: 30px;
     color: white;
