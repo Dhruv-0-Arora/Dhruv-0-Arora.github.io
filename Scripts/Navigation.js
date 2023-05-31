@@ -1,7 +1,6 @@
-function toggleNav() {
-  const navItems = document.querySelector('.nav-items');
-  navItems.classList.toggle('show');
-}
+const checkBtn = document.querySelector('.checkbtn');
+const navItems = document.querySelector('.nav-items');
 
-const checkBtn = document.querySelector('.check-btn');
-checkBtn.addEventListener('click', toggleNav);
+checkBtn.addEventListener('click', () => {
+    navItems.classList.toggle('active');
+});
