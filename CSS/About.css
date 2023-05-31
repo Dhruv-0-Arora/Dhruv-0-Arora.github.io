@@ -1,6 +1,10 @@
 .container {
   display: flex;
+  height: 100vh;
   align-items: center;
+  width: 1200px;
+  justify-content: space-around;
+  margin: 0 auto;
 }
 
 .about-section {
@@ -9,6 +13,7 @@
   margin-right: 20px;
   margin-top: 50px;
   margin-bottom: 50px;
+  margin-left: 20px;
 }
 
 .text-section {
@@ -18,47 +23,60 @@
   font-size: 16px;
 }
 
-.about-section h1 {
-  margin-left: 20px;
+.round-image-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 325px;
+  width: 325px;
+  overflow: hidden;
+  border-radius: 50%;
 }
 
 .round-image {
-  border-radius: 50%;
-  width: 200px;
-  height: 200px;
-  border: 5px solid #fff;
-  box-shadow: 0 0 0 5px #00ae06;
-  transition: all 0.3s ease-in-out;
-  object-fit: cover;
-  margin-left: 50px;
-}
-
-.circle1, .circle2 {
-  position: absolute;
-  content: "";
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  border: 5px solid #00ae06;
-  box-sizing: border-box;
-  animation: rotate 3s linear infinite;
+  margin: 0 auto;
+  width: 300px;
+  height: 300px;
 }
 
 .circle1 {
-  border-color: #00ae06 transparent transparent transparent;
-  z-index: -1;
+  animation: rotate 7s infinite;
+  -webkit-animation-timing-function: linear;
+  animation-timing-function: linear;
+  position: absolute;
+  bottom: 50%;
+  right: 0px;
+  width: 50%;
+  height: 50%;
+  transform-origin: 0% 100%;
+  transform: rotate(0deg);
+  z-index: -2;
+  border-radius: 50%;
 }
 
 .circle2 {
-  border-color: transparent transparent #00ae06 transparent;
+  animation: rotate 14s infinite;
+  -webkit-animation-timing-function: linear;
+  animation-timing-function: linear;
+  position: absolute;
+  top: 50%;
+  left: 0px;
+  width: 50%;
+  height: 50%;
+  transform-origin: 100% 0%;
+  transform: rotate(0deg);
   z-index: -2;
+  border-radius: 50%;
 }
 
 @keyframes rotate {
   0% {
-    transform: rotate(0deg);
+      background: #009e22;
+      transform: rotate(0deg);
   }
   100% {
-    transform: rotate(360deg);
+      background: #009e22;
+      transform: rotate(359deg);
   }
 }
