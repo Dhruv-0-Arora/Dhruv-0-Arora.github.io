@@ -1,6 +1,11 @@
-const checkBtn = document.querySelector('.checkbtn');
-const navItems = document.querySelector('.nav-items');
+const checkBtn = document.getElementsByClassName('checkbtn');
+const navUl = document.getElementsByTagName('ul');
 
-checkBtn.addEventListener('click', () => {
-    navItems.classList.toggle('active');
+checkBtn.addEventListener("click", () => {
+    console.log("here");
+    if (navUl.style.display === 'none') {
+        navUl.style.display = 'block';
+    } else {
+        navUl.style.display = 'none';
+    }
 });
