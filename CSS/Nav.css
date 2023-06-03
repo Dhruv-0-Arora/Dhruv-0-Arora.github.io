@@ -11,6 +11,7 @@ nav {
     background: darkgreen;
     height: 80px;
     width: 100%;
+    z-index: 10;
 }
 
 label.logo {
@@ -78,7 +79,11 @@ nav ul li a:hover {
         top: 80px;
         left: 0;
         text-align: center;
-        display: none;
+        left: -100%;
+        transition: all .5s;
+    }
+    nav ul li {
+        display: block;
     }
     nav ul li a {
         font-size: 20px;
@@ -87,6 +92,10 @@ nav ul li a:hover {
         background: none;
         color: #363636; 
     }
+    #check:checked ~ ul {
+        left: 0;   
+    }
+
 }
 
 @media screen and (max-width: 800px) {
