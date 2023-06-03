@@ -39,6 +39,7 @@
   margin: 0 auto;
   width: 300px;
   height: 300px;
+  z-index: -1;
 }
 
 .circle1 {
