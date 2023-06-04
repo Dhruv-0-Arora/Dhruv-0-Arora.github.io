@@ -11,6 +11,7 @@ nav {
     background: darkgreen;
     height: 80px;
     width: 100%;
+    z-index: 10;
 }
 
 label.logo {
@@ -66,17 +67,7 @@ nav ul li a:hover {
     display: none;
 }
 
-@media (max-width: 952px) {
-    label.logo {
-        font-size: 30px;
-        padding-left: 50px;
-    }
-    nav ul li a {
-        font-size: 16px;
-    }
-}
-
-@media (max-width: 858px) {
+@media screen and (max-width: 1020px) {
     .checkbtn {
         display: block;
     }
@@ -88,6 +79,8 @@ nav ul li a:hover {
         top: 80px;
         left: 0;
         text-align: center;
+        left: -100%;
+        transition: all .5s;
     }
     nav ul li {
         display: block;
@@ -99,4 +92,13 @@ nav ul li a:hover {
         background: none;
         color: #363636; 
     }
+    #check:checked ~ ul {
+        left: 0;   
+    }
+
 }
+
+@media screen and (max-width: 800px) {
+
+}
+
