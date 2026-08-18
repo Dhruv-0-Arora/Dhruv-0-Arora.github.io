@@ -1,0 +1,115 @@
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/space-grotesk";
+@import "@fontsource/jetbrains-mono";
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --c-bg: #fafaf8;
+  --c-surface: #ffffff;
+  --c-surface-2: #f1efea;
+  --c-border: #e4e2dd;
+  --c-text: #1a1d21;
+  --c-muted: #545d6b;
+  --c-faint: #6b7280;
+  --c-accent: #e05e0b;
+  --c-accent-soft: rgb(224 94 11 / 0.18);
+  --c-on-accent: #16181c;
+  --c-hue-green: #048359;
+  --c-hue-sky: #0076c5;
+  --c-hue-violet: #8747f2;
+  --c-hue-rose: #dd1a4c;
+  --c-hue-amber: #b75807;
+  --c-hue-green-vivid: #059669;
+  --c-hue-sky-vivid: #0284c7;
+  --c-hue-violet-vivid: #7c3aed;
+  --c-hue-rose-vivid: #e11d48;
+  --c-hue-amber-vivid: #d97706;
+  --c-hue-green-soft: rgb(5 150 105 / 0.18);
+  --c-hue-sky-soft: rgb(2 132 199 / 0.18);
+  --c-hue-violet-soft: rgb(124 58 237 / 0.18);
+  --c-hue-rose-soft: rgb(225 29 72 / 0.18);
+  --c-hue-amber-soft: rgb(217 119 6 / 0.18);
+  color-scheme: light;
+}
+
+.dark {
+  --c-bg: #0b0d10;
+  --c-surface: #13161b;
+  --c-surface-2: #1a1e25;
+  --c-border: #262b33;
+  --c-text: #e8ebf0;
+  --c-muted: #98a1af;
+  --c-faint: #7a828e;
+  --c-accent: #f97316;
+  --c-accent-soft: rgb(249 115 22 / 0.18);
+  --c-on-accent: #16181c;
+  --c-hue-green: #34d399;
+  --c-hue-sky: #38bdf8;
+  --c-hue-violet: #a78bfa;
+  --c-hue-rose: #fb7185;
+  --c-hue-amber: #fbbf24;
+  --c-hue-green-vivid: #34d399;
+  --c-hue-sky-vivid: #38bdf8;
+  --c-hue-violet-vivid: #a78bfa;
+  --c-hue-rose-vivid: #fb7185;
+  --c-hue-amber-vivid: #fbbf24;
+  --c-hue-green-soft: rgb(52 211 153 / 0.16);
+  --c-hue-sky-soft: rgb(56 189 248 / 0.16);
+  --c-hue-violet-soft: rgb(167 139 250 / 0.16);
+  --c-hue-rose-soft: rgb(251 113 133 / 0.16);
+  --c-hue-amber-soft: rgb(251 191 36 / 0.16);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--c-bg);
+  --color-surface: var(--c-surface);
+  --color-surface-2: var(--c-surface-2);
+  --color-border: var(--c-border);
+  --color-text: var(--c-text);
+  --color-muted: var(--c-muted);
+  --color-faint: var(--c-faint);
+  --color-accent: var(--c-accent);
+  --color-accent-soft: var(--c-accent-soft);
+  --color-on-accent: var(--c-on-accent);
+  --color-hue-green: var(--c-hue-green);
+  --color-hue-sky: var(--c-hue-sky);
+  --color-hue-violet: var(--c-hue-violet);
+  --color-hue-rose: var(--c-hue-rose);
+  --color-hue-amber: var(--c-hue-amber);
+  --font-display:
+    "Space Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  @apply bg-bg font-sans text-text antialiased;
+  /* Full-bleed breakouts (projects showcase) must not create horizontal scroll. */
+  overflow-x: clip;
+  transition:
+    background-color 200ms ease,
+    color 200ms ease;
+}
+
+::selection {
+  background: var(--c-accent);
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+}
