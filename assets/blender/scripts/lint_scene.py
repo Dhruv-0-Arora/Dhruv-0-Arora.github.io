@@ -69,7 +69,7 @@ class Report:
 
 
 SLUG = r"[a-z0-9]+(?:-[a-z0-9]+)*"
-DISTRICT_OBJECT = re.compile(rf"^(?P<district>{SLUG})\.(?P<installation>{SLUG})\.(?P<part>{SLUG})(?:\.(?P<index>\d{{3}}))?$")
+DISTRICT_OBJECT = re.compile(rf"^(?P<district>{SLUG})\.(?P<installation>{SLUG})\.(?P<part>{SLUG})(?:\.{SLUG})*$")
 COLLIDER_OBJECT = re.compile(rf"^col\.(?:ground|box\.{SLUG}(?:\.\d{{3}})?)$")
 RAIL_PATH = re.compile(r"^rail\.path$")
 RAIL_LOOK = re.compile(r"^rail\.look\.\d{2}$")
@@ -163,7 +163,7 @@ def lint(scene: bpy.types.Scene | None = None, contract: dict | None = None) -> 
             m = DISTRICT_OBJECT.match(obj.name)
             if not m:
                 report.error(
-                    f"'{obj.name}' in {col_name}: expected '<district>.<installation>.<part>[.NNN]'"
+                    f"'{obj.name}' in {col_name}: expected '<district>.<installation>.<part>[.<sub>...]'"
                 )
                 continue
             if m.group("district") != district:

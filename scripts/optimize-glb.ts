@@ -1,5 +1,5 @@
 import { stat } from "node:fs/promises";
-import { type Document, type Mesh, NodeIO } from "@gltf-transform/core";
+import { type Document, Logger, type Mesh, NodeIO } from "@gltf-transform/core";
 import { ALL_EXTENSIONS } from "@gltf-transform/extensions";
 import {
   dedup,
@@ -31,6 +31,7 @@ async function getIO(): Promise<NodeIO> {
   if (io) return io;
   await MeshoptEncoder.ready;
   io = new NodeIO()
+    .setLogger(new Logger(Logger.Verbosity.WARN))
     .registerExtensions(ALL_EXTENSIONS)
     .registerDependencies({ "meshopt.encoder": MeshoptEncoder });
   return io;
