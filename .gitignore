@@ -6,3 +6,4 @@ logs/
 .idea/
 .vscode/
 *.local
+__pycache__/
