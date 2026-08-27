@@ -8,10 +8,21 @@ describe("decideCapability", () => {
     expect(decideCapability(ok)).toBe("simulator");
   });
 
-  it("falls back for reduced motion, tiny screens, and no WebGL", () => {
-    expect(decideCapability({ ...ok, reducedMotion: true })).toBe("static");
-    expect(decideCapability({ ...ok, width: MIN_WIDTH - 1 })).toBe("static");
+  it("names the reason for each fallback", () => {
+    expect(decideCapability({ ...ok, reducedMotion: true })).toBe(
+      "reduced-motion",
+    );
+    expect(decideCapability({ ...ok, width: MIN_WIDTH - 1 })).toBe("narrow");
     expect(decideCapability({ ...ok, width: MIN_WIDTH })).toBe("simulator");
-    expect(decideCapability({ ...ok, webgl: false })).toBe("static");
+    expect(decideCapability({ ...ok, webgl: false })).toBe("no-webgl");
+  });
+
+  it("ranks hard limits above the overridable one", () => {
+    expect(
+      decideCapability({ reducedMotion: true, width: 200, webgl: false }),
+    ).toBe("no-webgl");
+    expect(
+      decideCapability({ reducedMotion: true, width: 200, webgl: true }),
+    ).toBe("narrow");
   });
 });

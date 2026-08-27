@@ -83,6 +83,7 @@ export const projects: Project[] = [
   },
   {
     name: "dirnt",
+    slug: "dirnt",
     accent: "green",
     tagline:
       "Directory lister sorted by recency, tinted on a perceptual Oklab age gradient.",
@@ -126,10 +127,101 @@ export const projects: Project[] = [
   },
   {
     name: "Wisconsin Racing",
+    slug: "wisconsin-racing",
     accent: "amber",
     tagline:
       "Battery management and ESP32 display drivers for a Formula SAE car.",
     tech: ["C", "ESP32", "Embedded"],
+    tier: "compact",
+  },
+  {
+    name: "Nazar",
+    slug: "nazar",
+    accent: "violet",
+    tagline:
+      "An offline AI that works out why a machine broke, and refuses to run the fix.",
+    description:
+      "My team built it in a day at the Dell x NVIDIA hackathon and placed 2nd of 40 teams. About 430 lines of dependency-free bash collect evidence from the sick machine, a two-layer graph walks from symptom to cause, and a local model writes a report where every claim footnotes a real line in a real file. It writes the fix and never runs it.",
+    tech: ["Python", "FastAPI", "Ollama", "networkx", "React"],
+    repo: "https://github.com/Dhruv-0-Arora/Nazar",
+    tier: "featured",
+    highlight: "2nd of 40 teams",
+  },
+  {
+    name: "Orion",
+    slug: "orion",
+    accent: "rose",
+    tagline:
+      "A raw photo editor I contribute to. 24 MP re-renders in about 8 ms.",
+    description:
+      "A C++20 engine drives a 27-node Metal compute graph, so moving a slider recomputes only what sits downstream. Every non-trivial filter cites a published paper. Orion is a project I work on with Aditya Bankoti; the numbers describe the project, not my share of it.",
+    tech: ["C++20", "Metal", "Slang", "SwiftUI"],
+    repo: "https://github.com/Nano-AI/Orion",
+    demo: "https://nano-ai.github.io/Orion/",
+    tier: "featured",
+    highlight: "24 MP raw in ~8 ms",
+  },
+  {
+    name: "Cypher",
+    slug: "cypher",
+    accent: "sky",
+    tagline:
+      "Conflict reports fused onto one live risk map, where corroboration raises confidence.",
+    description:
+      "My team's entry at CascadiaJS 2026, where it placed 3rd. It scrapes early on-the-ground reports, archives the raw payloads before anything touches them, and merges reports within about 5 km and 6 hours into one event. Five posts about one explosion become one brighter dot, not five scary ones.",
+    tech: ["Python", "XGBoost", "PyTorch", "React", "MapLibre"],
+    repo: "https://github.com/Dhruv-0-Arora/Cypher",
+    tier: "featured",
+    highlight: "3rd, CascadiaJS 2026",
+  },
+  {
+    name: "AltiGoz",
+    slug: "altigoz",
+    accent: "rose",
+    tagline:
+      "Pedestrian-safety routing for Seattle, read from 646 live traffic cameras.",
+    tech: ["Python", "VLM", "DGX Spark", "geospatial"],
+    repo: "https://github.com/BerkM125/AltiGoz",
+    tier: "compact",
+    highlight: "646 cameras",
+  },
+  {
+    name: "IMC Prosperity 4",
+    slug: "imc-prosperity-4",
+    accent: "amber",
+    tagline:
+      "A market maker for a two-week trading competition, with the losing rounds published.",
+    tech: ["Python", "market making", "options"],
+    repo: "https://github.com/Dhruv-0-Arora/imc-prosperity-4",
+    tier: "compact",
+    highlight: "+114,664 in round 3",
+  },
+  {
+    name: "Agentic CAD Spike",
+    slug: "agentic-cad-spike",
+    accent: "sky",
+    tagline:
+      "Describe a part in chat and it appears, on a B-rep kernel I wrote in Rust.",
+    tech: ["Rust", "Python", "OCCT", "React"],
+    tier: "compact",
+    highlight: "own B-rep kernel",
+  },
+  {
+    name: "Government platform",
+    slug: "swiftlabs-platform",
+    accent: "sky",
+    tagline:
+      "I built and maintain a production platform for a US state government client.",
+    tech: ["React", "Express", "Firebase", "Tailwind CSS", "Vite", "Vercel"],
+    tier: "compact",
+    highlight: "2,000+ users",
+  },
+  {
+    name: "stalk",
+    slug: "stalk",
+    accent: "green",
+    tagline: "My own 3x6 ortholinear split keyboard, named for a bamboo stem.",
+    tech: ["keyboard design", "PCB"],
     tier: "compact",
   },
 ];

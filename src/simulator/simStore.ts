@@ -20,6 +20,8 @@ export interface SimSnapshot {
   loaded: readonly District[];
   /** Keyboard-and-pointer device; touch-only visitors stay on rails. */
   hasKeyboard: boolean;
+  /** Visitor prefers reduced motion but entered anyway: cut, never glide. */
+  reducedMotion: boolean;
   stats: { fps: number; calls: number; triangles: number };
 }
 
@@ -43,6 +45,7 @@ const initial: SimSnapshot = {
   loading: null,
   loaded: [],
   hasKeyboard: false,
+  reducedMotion: false,
   stats: { fps: 0, calls: 0, triangles: 0 },
 };
 

@@ -55,6 +55,8 @@ export function useInputs(): void {
       frame.scrollT = scrollProgress();
     };
     const onPointer = (e: PointerEvent) => {
+      // A finger dragging the page is scrolling, not looking around.
+      if (e.pointerType === "touch") return;
       frame.pointerX = (e.clientX / window.innerWidth) * 2 - 1;
       frame.pointerY = -((e.clientY / window.innerHeight) * 2 - 1);
     };

@@ -5,7 +5,12 @@ const REDUCED = "(prefers-reduced-motion: reduce)";
 /** Below this width the world cannot show enough to be worth the download. */
 export const MIN_WIDTH = 380;
 
-export type Capability = "simulator" | "static";
+/**
+ * Why a visitor gets the static page. `reduced-motion` is the only reason
+ * they may override: the simulator then cuts between rail points instead
+ * of gliding.
+ */
+export type Capability = "simulator" | "reduced-motion" | "narrow" | "no-webgl";
 
 let webgl: boolean | null = null;
 
@@ -26,9 +31,9 @@ export function decideCapability(input: {
   width: number;
   webgl: boolean;
 }): Capability {
-  if (input.reducedMotion || input.width < MIN_WIDTH || !input.webgl) {
-    return "static";
-  }
+  if (!input.webgl) return "no-webgl";
+  if (input.width < MIN_WIDTH) return "narrow";
+  if (input.reducedMotion) return "reduced-motion";
   return "simulator";
 }
 

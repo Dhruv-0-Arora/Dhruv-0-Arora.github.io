@@ -108,7 +108,10 @@ export function CameraRig({ world, districts, dozerRef }: CameraRigProps) {
     const dt = Math.min(rawDt, 0.1);
     const snap = sim.get();
     const s = scratch;
-    const damp = (rate: number) => 1 - Math.exp(-rate * dt);
+    // Reduced motion: every follow becomes an instant cut.
+    const damp = snap.reducedMotion
+      ? () => 1
+      : (rate: number) => 1 - Math.exp(-rate * dt);
 
     // Vehicle: always integrated so a parked Dozer settles onto the ground.
     const input = snap.mode === "driving" ? frame.input : IDLE_INPUT;
