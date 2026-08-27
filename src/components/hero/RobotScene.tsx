@@ -3,17 +3,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { use, useEffect, useRef } from "react";
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
-import { buildRobot, type RobotModel } from "../../mirabuf/buildRobot";
-import { parseMira } from "../../mirabuf/parseMira";
-
-let robotPromise: Promise<RobotModel> | null = null;
-
-export function loadRobot(): Promise<RobotModel> {
-  robotPromise ??= parseMira("/models/dozer.mira").then((assembly) =>
-    buildRobot(assembly),
-  );
-  return robotPromise;
-}
+import { loadRobot } from "../../mirabuf/loadRobot";
 
 const INITIAL_YAW = 4.35;
 const DRAG_SENSITIVITY = 0.008;

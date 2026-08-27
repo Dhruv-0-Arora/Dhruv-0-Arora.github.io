@@ -69,12 +69,15 @@ function toColor(rgba: Rgba, out = new THREE.Color()): THREE.Color {
 export class MaterialRegistry {
   private readonly tracked: Tracked[] = [];
   private elapsed = RETINT_MS;
+  private last: { palette: Palette; theme: ThemeName } | null = null;
 
   /**
-   * Adopts a material. Throws on names outside the contract so a stray
-   * Blender material fails in development instead of shipping gray.
+   * Adopts a material and returns the one to render with. Throws on names
+   * outside the contract so a stray Blender material fails in development
+   * instead of shipping gray. Materials registered after a palette was
+   * applied are painted immediately, so streamed districts match.
    */
-  register(material: THREE.Material): void {
+  register(material: THREE.Material): THREE.MeshStandardMaterial {
     const binding = parseMaterialName(material.name);
     const token = bindingToken(binding);
     const std =
@@ -84,7 +87,7 @@ export class MaterialRegistry {
     std.roughness = 0.9;
     std.metalness = 0;
     std.flatShading = false;
-    this.tracked.push({
+    const entry: Tracked = {
       material: std,
       token,
       from: std.color.clone(),
@@ -92,7 +95,29 @@ export class MaterialRegistry {
       emissiveFrom: 0,
       emissiveTo: 0,
       opacity: 1,
-    });
+    };
+    this.tracked.push(entry);
+    if (this.last) {
+      this.paint(entry, this.last.palette, this.last.theme);
+      entry.from.copy(entry.to);
+      entry.emissiveFrom = entry.emissiveTo;
+      std.color.copy(entry.to);
+      std.emissiveIntensity = entry.emissiveTo;
+    }
+    return std;
+  }
+
+  private paint(t: Tracked, palette: Palette, theme: ThemeName): void {
+    const rgba = palette[t.token];
+    t.from.copy(t.material.color);
+    toColor(rgba, t.to);
+    t.emissiveFrom = t.material.emissiveIntensity;
+    t.emissiveTo =
+      theme === "dark" && isEmissiveToken(t.token) ? NIGHT_EMISSIVE : 0;
+    t.opacity = rgba.a;
+    t.material.transparent = rgba.a < 1;
+    t.material.opacity = rgba.a;
+    t.material.emissive.copy(t.to);
   }
 
   get size(): number {
@@ -106,18 +131,8 @@ export class MaterialRegistry {
 
   /** Sets a new target palette. Pass `immediate` on first paint. */
   apply(palette: Palette, theme: ThemeName, immediate = false): void {
-    for (const t of this.tracked) {
-      const rgba = palette[t.token];
-      t.from.copy(t.material.color);
-      toColor(rgba, t.to);
-      t.emissiveFrom = t.material.emissiveIntensity;
-      t.emissiveTo =
-        theme === "dark" && isEmissiveToken(t.token) ? NIGHT_EMISSIVE : 0;
-      t.opacity = rgba.a;
-      t.material.transparent = rgba.a < 1;
-      t.material.opacity = rgba.a;
-      t.material.emissive.copy(t.to);
-    }
+    this.last = { palette, theme };
+    for (const t of this.tracked) this.paint(t, palette, theme);
     this.elapsed = immediate ? RETINT_MS : 0;
     this.tick(0);
   }

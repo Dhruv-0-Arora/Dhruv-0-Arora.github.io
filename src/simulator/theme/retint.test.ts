@@ -87,6 +87,15 @@ describe("MaterialRegistry", () => {
     expect(m.color.r).toBeCloseTo(1, 5);
   });
 
+  it("paints materials registered after a palette was applied", () => {
+    const registry = new MaterialRegistry();
+    registry.apply(palette("#000000", { accent: "#ff0000" }), "dark", true);
+    const late = registry.register(mat("tok.accent"));
+    expect(late.color.r).toBeCloseTo(1, 5);
+    expect(late.emissiveIntensity).toBeGreaterThan(0);
+    expect(registry.tick(0)).toBe(false);
+  });
+
   it("converts sRGB tokens into the linear working space", () => {
     const registry = new MaterialRegistry();
     const m = mat("tok.muted");
