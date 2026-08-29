@@ -2,6 +2,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { useTheme } from "../../lib/theme";
+import { sim } from "../simStore.ts";
 import { readPalette } from "./palette.ts";
 import { type MaterialRegistry, RETINT_MS } from "./retint.ts";
 
@@ -31,6 +32,7 @@ export function useRetint(registry: MaterialRegistry): void {
     const immediate = first.current;
     first.current = false;
     registry.apply(palette, theme, immediate);
+    sim.set({ palette });
 
     const bg = palette.bg;
     bgTo.current.setRGB(bg.r, bg.g, bg.b, THREE.SRGBColorSpace);

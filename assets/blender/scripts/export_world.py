@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import sys
 
@@ -91,6 +92,26 @@ def rail_points(obj: bpy.types.Object) -> list[list[float]]:
         evaluated.to_mesh_clear()
 
 
+def nearest_t(points: list[list[float]], closed: bool, p: list[float]) -> float:
+    """Arc-length fraction of the polyline point closest to ``p`` (Y-up frame)."""
+    pts = points + [points[0]] if closed else points
+    cum = [0.0]
+    for a, b in zip(pts, pts[1:]):
+        cum.append(cum[-1] + math.dist(a, b))
+    total = cum[-1] or 1.0
+    best, best_d = 0.0, float("inf")
+    for i, (a, b) in enumerate(zip(pts, pts[1:])):
+        ab = [b[k] - a[k] for k in range(3)]
+        ab2 = sum(v * v for v in ab)
+        f = 0.0 if ab2 == 0 else max(0.0, min(1.0, sum((p[k] - a[k]) * ab[k] for k in range(3)) / ab2))
+        q = [a[k] + ab[k] * f for k in range(3)]
+        d = math.dist(p, q)
+        if d < best_d:
+            best_d = d
+            best = (cum[i] + (cum[i + 1] - cum[i]) * f) / total
+    return best
+
+
 def world_aabb(obj: bpy.types.Object) -> tuple[list[float], list[float]]:
     corners = [obj.matrix_world @ Vector(c) for c in obj.bound_box]
     if obj.type == "EMPTY":
@@ -115,11 +136,15 @@ def build_meta(contract: dict) -> dict:
     colliders = root.children[cols["colliders"]]
 
     rail = bpy.data.objects["rail.path"]
+    points = rail_points(rail)
+    closed = bool(rail.data.splines[0].use_cyclic_u)
     looks = []
     zones = []
     for obj in lint_scene.collection_objects(rails):
         if lint_scene.RAIL_LOOK.match(obj.name):
-            looks.append({"t": float(obj["t"]), "position": yup(obj.matrix_world.translation)})
+            position = yup(obj.matrix_world.translation)
+            t = obj.get("t")
+            looks.append({"t": float(t) if t is not None else round(nearest_t(points, closed, position), 4), "position": position})
         elif lint_scene.ZONE_OBJECT.match(obj.name):
             zones.append(
                 {
@@ -150,7 +175,7 @@ def build_meta(contract: dict) -> dict:
 
     return {
         "version": contract["version"],
-        "rail": {"points": rail_points(rail), "closed": bool(rail.data.splines[0].use_cyclic_u)},
+        "rail": {"points": points, "closed": closed},
         "looks": looks,
         "zones": zones,
         "colliders": boxes,

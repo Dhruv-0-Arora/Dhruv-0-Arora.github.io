@@ -5,6 +5,7 @@ import {
   transition,
 } from "./controls/controlMachine.ts";
 import type { DriveInput } from "./controls/driveController.ts";
+import type { Palette } from "./theme/palette.ts";
 import type { District, ZoneSlug } from "./world/contract.ts";
 
 /** React-visible state: changes here re-render the HUD and dock. */
@@ -22,6 +23,8 @@ export interface SimSnapshot {
   hasKeyboard: boolean;
   /** Visitor prefers reduced motion but entered anyway: cut, never glide. */
   reducedMotion: boolean;
+  /** Current token colors, read from CSS; instancers derive colors from it. */
+  palette: Palette | null;
   stats: { fps: number; calls: number; triangles: number };
 }
 
@@ -46,6 +49,7 @@ const initial: SimSnapshot = {
   loaded: [],
   hasKeyboard: false,
   reducedMotion: false,
+  palette: null,
   stats: { fps: 0, calls: 0, triangles: 0 },
 };
 

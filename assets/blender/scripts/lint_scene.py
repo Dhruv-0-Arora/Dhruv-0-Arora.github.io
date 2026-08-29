@@ -211,9 +211,11 @@ def lint(scene: bpy.types.Scene | None = None, contract: dict | None = None) -> 
                 elif len(obj.data.splines) != 1:
                     report.error("'rail.path' must have exactly one spline")
             elif RAIL_LOOK.match(obj.name):
+                # 't' is optional: the exporter derives it from the nearest
+                # rail point when absent. When present it must be in [0, 1].
                 t = obj.get("t")
-                if not isinstance(t, (int, float)) or not 0.0 <= float(t) <= 1.0:
-                    report.error(f"'{obj.name}' needs a custom property 't' in [0, 1]")
+                if t is not None and (not isinstance(t, (int, float)) or not 0.0 <= float(t) <= 1.0):
+                    report.error(f"'{obj.name}' custom property 't' must be in [0, 1]")
             elif ZONE_OBJECT.match(obj.name):
                 slug = ZONE_OBJECT.match(obj.name).group("slug")
                 zones_found.add(slug)

@@ -42,6 +42,10 @@ const RETURN = {
 /** Where the ground raycast starts; nothing is taller than this. */
 const RAY_HEIGHT = 200;
 
+/** Vertical field of view by orientation: portrait phones need to see more. */
+const FOV_LANDSCAPE = 50;
+const FOV_PORTRAIT = 70;
+
 interface CameraRigProps {
   world: WorldBase;
   districts: readonly LoadedDistrict[];
@@ -107,6 +111,13 @@ export function CameraRig({ world, districts, dozerRef }: CameraRigProps) {
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.1);
     const snap = sim.get();
+    if (camera instanceof THREE.PerspectiveCamera) {
+      const fov = camera.aspect < 1 ? FOV_PORTRAIT : FOV_LANDSCAPE;
+      if (camera.fov !== fov) {
+        camera.fov = fov;
+        camera.updateProjectionMatrix();
+      }
+    }
     const s = scratch;
     // Reduced motion: every follow becomes an instant cut.
     const damp = snap.reducedMotion

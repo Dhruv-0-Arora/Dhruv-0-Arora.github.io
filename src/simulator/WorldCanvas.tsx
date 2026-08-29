@@ -1,11 +1,12 @@
 import { Canvas } from "@react-three/fiber";
-import { Suspense, use, useEffect, useRef, useState } from "react";
+import { Suspense, use, useCallback, useEffect, useRef, useState } from "react";
 import type * as THREE from "three";
 import { useCanvasActive } from "../lib/useCanvasActive";
 import { CameraRig } from "./controls/CameraRig.tsx";
 import { DozerRig } from "./dozer/DozerRig.tsx";
 import { sim } from "./simStore.ts";
 import { useRetint } from "./theme/useRetint.ts";
+import { BambooGrove } from "./world/instancing/BambooGrove.tsx";
 import {
   DISTRICT_HINTS,
   districtLoadOrder,
@@ -18,7 +19,18 @@ function WorldScene() {
   const world = use(loadWorldBase());
   const dozerRef = useRef<THREE.Group>(null);
   const [districts, setDistricts] = useState<LoadedDistrict[]>([]);
+  const [instanced, setInstanced] = useState<LoadedDistrict[]>([]);
   useRetint(world.registry);
+  const dirnt = world.meta.zones.find((z) => z.slug === "dirnt");
+
+  // Runtime instancers register as cullable entries of their district.
+  const onGrove = useCallback((group: THREE.Group, center: THREE.Vector3) => {
+    setInstanced((prev) =>
+      prev.some((d) => d.group === group)
+        ? prev
+        : [...prev, { district: "terminal", group, center }],
+    );
+  }, []);
 
   useEffect(() => {
     sim.set({ worldReady: true });
@@ -60,12 +72,13 @@ function WorldScene() {
       {districts.map((d) => (
         <primitive key={d.district} object={d.group} />
       ))}
+      {dirnt ? <BambooGrove zone={dirnt} onMount={onGrove} /> : null}
       <Suspense fallback={null}>
         <DozerRig rigRef={dozerRef} />
       </Suspense>
       <CameraRig
         world={world}
-        districts={[world.shared, ...districts]}
+        districts={[world.shared, ...districts, ...instanced]}
         dozerRef={dozerRef}
       />
     </>
