@@ -38,6 +38,8 @@ export interface FrameState {
   input: DriveInput;
   /** Rail t the camera is gliding back to; null until computed. */
   returnT: number | null;
+  /** Where attention is: the camera aim on rails, the Dozer when driving. */
+  probe: [number, number, number];
 }
 
 const initial: SimSnapshot = {
@@ -62,6 +64,7 @@ export const frame: FrameState = {
   pointerY: 0,
   input: { throttle: 0, steer: 0 },
   returnT: null,
+  probe: [0, 0, 0],
 };
 
 function emit() {
@@ -100,6 +103,7 @@ export const sim = {
     frame.pointerY = 0;
     frame.input = { throttle: 0, steer: 0 };
     frame.returnT = null;
+    frame.probe = [0, 0, 0];
     emit();
   },
 };

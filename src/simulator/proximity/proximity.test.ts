@@ -42,17 +42,24 @@ describe("ProximityTracker", () => {
     expect(tracker.update(100, 100).active).toBe("orion");
   });
 
-  it("picks the nearest zone where zones overlap, and does not switch until it exits", () => {
+  it("hands over to a closer zone where zones overlap", () => {
     const tracker = new ProximityTracker(zones);
     expect(tracker.update(6, 0).active).toBe("astute");
-    // Now closer to stalk but still within astute's exit band.
-    expect(tracker.update(9, 0).active).toBe("astute");
-    // Past astute's exit band: hands over to stalk in one update.
-    expect(tracker.update(13, 0)).toEqual({
+    // Inside both, but stalk's center is now closer: switch at once.
+    expect(tracker.update(9, 0)).toEqual({
       entered: "stalk",
       exited: "astute",
       active: "stalk",
     });
+    // Drifting back toward the midpoint keeps stalk until astute is closer.
+    expect(tracker.update(7.6, 0).active).toBe("stalk");
+    expect(tracker.update(7.4, 0).active).toBe("astute");
+  });
+
+  it("keeps the zone in the exit band when no other zone contains the probe", () => {
+    const tracker = new ProximityTracker(zones);
+    tracker.update(0, 0);
+    expect(tracker.update(0, 12).active).toBe("astute");
   });
 
   it("resets", () => {

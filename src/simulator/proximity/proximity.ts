@@ -14,7 +14,9 @@ export interface ProximityChange {
  * Tracks which zone the probe (camera aim on rails, the Dozer when driving)
  * is in. One zone is active at a time. Hysteresis keeps a zone active until
  * the probe is 1.25 radii away, so a rail that skims an edge does not
- * flicker the dock. Distances are horizontal (XZ).
+ * flicker the dock. Zones may overlap (the Cypher map is the floor under
+ * Nazar): a different zone takes over as soon as it contains the probe and
+ * its center is closer. Distances are horizontal (XZ).
  */
 export class ProximityTracker {
   private activeZone: ZoneMeta | null = null;
@@ -30,29 +32,30 @@ export class ProximityTracker {
 
   update(x: number, z: number): ProximityChange {
     let exited: ZoneSlug | null = null;
+    let entered: ZoneSlug | null = null;
+
+    // Nearest zone that contains the probe, if any.
+    let best: ZoneMeta | null = null;
+    let bestD = Number.POSITIVE_INFINITY;
+    for (const zone of this.zones) {
+      const d = distance(zone, x, z);
+      if (d < zone.radius && d < bestD) {
+        best = zone;
+        bestD = d;
+      }
+    }
+
     if (this.activeZone) {
       const d = distance(this.activeZone, x, z);
-      if (d > this.activeZone.radius * EXIT_FACTOR) {
+      const takeover = best && best !== this.activeZone && bestD < d;
+      if (d > this.activeZone.radius * EXIT_FACTOR || takeover) {
         exited = this.activeZone.slug;
         this.activeZone = null;
       }
     }
-
-    let entered: ZoneSlug | null = null;
-    if (!this.activeZone) {
-      let best: ZoneMeta | null = null;
-      let bestD = Number.POSITIVE_INFINITY;
-      for (const zone of this.zones) {
-        const d = distance(zone, x, z);
-        if (d < zone.radius && d < bestD) {
-          best = zone;
-          bestD = d;
-        }
-      }
-      if (best) {
-        this.activeZone = best;
-        entered = best.slug;
-      }
+    if (!this.activeZone && best) {
+      this.activeZone = best;
+      entered = best.slug;
     }
 
     return { entered, exited, active: this.active };

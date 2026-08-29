@@ -213,7 +213,10 @@ export function CameraRig({ world, districts, dozerRef }: CameraRigProps) {
     }
     camera.lookAt(target);
 
-    // Proximity.
+    // Proximity, and the probe other systems react to (hex glow).
+    frame.probe[0] = probeX;
+    frame.probe[1] = drive.current.y;
+    frame.probe[2] = probeZ;
     const change = tracker.update(probeX, probeZ);
     if (change.entered || change.exited) {
       sim.set({ zone: change.active });

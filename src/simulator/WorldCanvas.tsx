@@ -1,12 +1,25 @@
 import { Canvas } from "@react-three/fiber";
-import { Suspense, use, useCallback, useEffect, useRef, useState } from "react";
+import {
+  Suspense,
+  use,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type * as THREE from "three";
 import { useCanvasActive } from "../lib/useCanvasActive";
 import { CameraRig } from "./controls/CameraRig.tsx";
 import { DozerRig } from "./dozer/DozerRig.tsx";
 import { sim } from "./simStore.ts";
 import { useRetint } from "./theme/useRetint.ts";
+import type { District, ZoneSlug } from "./world/contract.ts";
 import { BambooGrove } from "./world/instancing/BambooGrove.tsx";
+import { CameraFrusta } from "./world/instancing/CameraFrusta.tsx";
+import { Candlesticks } from "./world/instancing/Candlesticks.tsx";
+import { HexGround } from "./world/instancing/HexGround.tsx";
+import { IMC_SHAPE, KERMS_SHAPE } from "./world/instancing/ohlc.ts";
 import {
   DISTRICT_HINTS,
   districtLoadOrder,
@@ -21,16 +34,27 @@ function WorldScene() {
   const [districts, setDistricts] = useState<LoadedDistrict[]>([]);
   const [instanced, setInstanced] = useState<LoadedDistrict[]>([]);
   useRetint(world.registry);
-  const dirnt = world.meta.zones.find((z) => z.slug === "dirnt");
+  const zone = (slug: ZoneSlug) =>
+    world.meta.zones.find((z) => z.slug === slug);
+  const dirnt = zone("dirnt");
+  const cypher = zone("cypher");
+  const altigoz = zone("altigoz");
+  const kerms = zone("kerms");
+  const imc = zone("imc-prosperity-4");
 
   // Runtime instancers register as cullable entries of their district.
-  const onGrove = useCallback((group: THREE.Group, center: THREE.Vector3) => {
-    setInstanced((prev) =>
-      prev.some((d) => d.group === group)
-        ? prev
-        : [...prev, { district: "terminal", group, center }],
-    );
-  }, []);
+  const register = useCallback(
+    (district: District) => (group: THREE.Group, center: THREE.Vector3) => {
+      setInstanced((prev) =>
+        prev.some((d) => d.group === group)
+          ? prev
+          : [...prev, { district, group, center }],
+      );
+    },
+    [],
+  );
+  const onTerminal = useMemo(() => register("terminal"), [register]);
+  const onEvidence = useMemo(() => register("evidence"), [register]);
 
   useEffect(() => {
     sim.set({ worldReady: true });
@@ -72,7 +96,25 @@ function WorldScene() {
       {districts.map((d) => (
         <primitive key={d.district} object={d.group} />
       ))}
-      {dirnt ? <BambooGrove zone={dirnt} onMount={onGrove} /> : null}
+      {dirnt ? <BambooGrove zone={dirnt} onMount={onTerminal} /> : null}
+      {cypher ? <HexGround zone={cypher} onMount={onEvidence} /> : null}
+      {altigoz ? <CameraFrusta zone={altigoz} onMount={onEvidence} /> : null}
+      {kerms ? (
+        <Candlesticks
+          zone={kerms}
+          shape={KERMS_SHAPE}
+          name="evidence.kerms"
+          onMount={onEvidence}
+        />
+      ) : null}
+      {imc ? (
+        <Candlesticks
+          zone={imc}
+          shape={IMC_SHAPE}
+          name="evidence.imc"
+          onMount={onEvidence}
+        />
+      ) : null}
       <Suspense fallback={null}>
         <DozerRig rigRef={dozerRef} />
       </Suspense>
