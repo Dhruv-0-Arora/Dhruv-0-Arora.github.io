@@ -25,6 +25,8 @@ export interface SimSnapshot {
   reducedMotion: boolean;
   /** Current token colors, read from CSS; instancers derive colors from it. */
   palette: Palette | null;
+  /** The Dozer left the world and is being put back on the nearest rail point. */
+  signalLost: boolean;
   stats: { fps: number; calls: number; triangles: number };
 }
 
@@ -52,6 +54,7 @@ const initial: SimSnapshot = {
   hasKeyboard: false,
   reducedMotion: false,
   palette: null,
+  signalLost: false,
   stats: { fps: 0, calls: 0, triangles: 0 },
 };
 

@@ -15,6 +15,7 @@ export function HUD() {
   const dozerReady = useSim((s) => s.dozerReady);
   const hasKeyboard = useSim((s) => s.hasKeyboard);
   const stats = useSim((s) => s.stats);
+  const signalLost = useSim((s) => s.signalLost);
   const canDrive = hasKeyboard && worldReady && dozerReady;
 
   return (
@@ -66,7 +67,11 @@ export function HUD() {
         className="absolute bottom-5 left-1/2 -translate-x-1/2"
         aria-live="polite"
       >
-        {!worldReady ? (
+        {signalLost ? (
+          <p className={`${mono} tracking-widest uppercase text-accent`}>
+            {"signal lost // respawning"}
+          </p>
+        ) : !worldReady ? (
           <p className={`${mono} tracking-widest uppercase`}>loading world</p>
         ) : loading ? (
           <p className={`${mono} tracking-widest uppercase`}>

@@ -42,6 +42,11 @@ const RETURN = {
 /** Where the ground raycast starts; nothing is taller than this. */
 const RAY_HEIGHT = 200;
 
+/** Seconds off the collision ground before the Dozer is respawned. */
+const SIGNAL_LOST_AFTER = 0.6;
+/** How long the "SIGNAL LOST" line stays up after the respawn, seconds. */
+const SIGNAL_LOST_HOLD = 1.4;
+
 /** Vertical field of view by orientation: portrait phones need to see more. */
 const FOV_LANDSCAPE = 50;
 const FOV_PORTRAIT = 70;
@@ -70,7 +75,8 @@ export function CameraRig({ world, districts, dozerRef }: CameraRigProps) {
         origin.set(x, RAY_HEIGHT, z);
         raycaster.set(origin, down);
         const hit = raycaster.intersectObject(world.ground, true)[0];
-        return hit ? hit.point.y : null;
+        lastHeight.current = hit ? hit.point.y : null;
+        return lastHeight.current;
       },
       colliders: world.meta.colliders.map((c) => ({ min: c.min, max: c.max })),
       bounds: {
@@ -83,6 +89,9 @@ export function CameraRig({ world, districts, dozerRef }: CameraRigProps) {
   }, [world, raycaster]);
 
   const drive = useRef(createDriveState(0, 0, 0, 0));
+  const offGround = useRef(0);
+  const lostHold = useRef(0);
+  const lastHeight = useRef<number | null>(0);
   const tracker = useMemo(
     () => new ProximityTracker(world.meta.zones),
     [world],
@@ -127,6 +136,31 @@ export function CameraRig({ world, districts, dozerRef }: CameraRigProps) {
     // Vehicle: always integrated so a parked Dozer settles onto the ground.
     const input = snap.mode === "driving" ? frame.input : IDLE_INPUT;
     advance(drive.current, input, dt, driveWorld);
+
+    // Out of bounds: off the collision ground for long enough means the
+    // world has no floor here. Put the Dozer back on the nearest rail point.
+    offGround.current =
+      lastHeight.current === null ? offGround.current + dt : 0;
+    if (offGround.current > SIGNAL_LOST_AFTER) {
+      const t = world.rail.nearestT([
+        drive.current.x,
+        drive.current.y,
+        drive.current.z,
+      ]);
+      world.rail.pointAt(t, s.v3);
+      const ground = driveWorld.groundHeight(s.v3[0], s.v3[2]) ?? 0;
+      drive.current.x = s.v3[0];
+      drive.current.z = s.v3[2];
+      drive.current.y = ground;
+      drive.current.speed = 0;
+      offGround.current = 0;
+      lostHold.current = SIGNAL_LOST_HOLD;
+      if (!snap.signalLost) sim.set({ signalLost: true });
+    } else if (lostHold.current > 0) {
+      lostHold.current -= dt;
+      if (lostHold.current <= 0 && snap.signalLost)
+        sim.set({ signalLost: false });
+    }
     const dozer = dozerRef.current;
     if (dozer) {
       dozer.position.set(drive.current.x, drive.current.y, drive.current.z);
