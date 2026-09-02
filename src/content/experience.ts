@@ -8,7 +8,7 @@ export const experience: Experience[] = [
     start: "Jun 2024",
     end: "present",
     bullets: [
-      "1 of 2 paid high school interns selected to develop and market Synthesis, a robotics simulator and 3D file exporter with 5K+ users.",
+      "1 of 2 paid high school interns selected to develop and market Synthesis, a robotics simulator and 3D file exporter. Its user base grew from 5K to 20K+ across my tenure.",
       "Built and led the team presentation of Synthesis' core value proposition to Autodesk's EVP and executive team.",
     ],
     tech: ["React", "TypeScript", "Three.js", "Python", "Docker", "AWS"],
@@ -16,12 +16,12 @@ export const experience: Experience[] = [
   {
     company: "SwiftLabs",
     role: "Partner / Developer",
-    location: "Clive, IA",
+    location: "Remote",
     start: "Jun 2025",
     end: "present",
     bullets: [
-      "Built a 5-figure government contract product for School Administrators of Iowa that helps principals draft teacher evaluation reports.",
-      "Designed and deployed the evaluation portal to 2K+ government-authorized users, interfacing directly with clients.",
+      "I built and maintain a production platform for a US state government client, a paid five-figure contract.",
+      "Deployed to 2,000+ authorized users. I interface directly with the client.",
     ],
     tech: ["React", "Express", "Firebase", "Tailwind CSS", "Vite", "Vercel"],
   },
