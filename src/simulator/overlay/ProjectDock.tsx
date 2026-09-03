@@ -49,6 +49,16 @@ export function ProjectDock() {
                     <TechBadge key={t} label={t} />
                   ))}
                 </div>
+                {project.repo ? (
+                  <a
+                    href={project.repo}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="pointer-events-auto mt-3 inline-block font-mono text-[12px] text-muted underline decoration-border underline-offset-4 transition-colors hover:text-accent hover:decoration-accent"
+                  >
+                    {project.repo.replace(/^https?:\/\//, "")}
+                  </a>
+                ) : null}
               </>
             ) : (
               <p className="mt-1 font-mono text-xs text-faint">

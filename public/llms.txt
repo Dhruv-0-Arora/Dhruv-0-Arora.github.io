@@ -2,9 +2,9 @@
 
 Personal portfolio of Dhruv Arora, a computer science and math student at UW-Madison and software engineering intern at Autodesk.
 
-- Builds Synthesis, an open source robotics simulator for FIRST students (5K+ users).
+- Develops and markets Synthesis, Autodesk's open source robotics simulator for FIRST students (5K to 20K+ users during his tenure).
 - Writes Rust CLI/TUI tools (astute, dirnt, monkeytype-tui) and agent-native software.
 - Projects, experience, skills, and awards are on the single-page site.
 - Contact: a_dhruv@outlook.com. GitHub: https://github.com/Dhruv-0-Arora
 
-The 3D robot in the hero is parsed live in the browser from a Synthesis .mira (Mirabuf protobuf) file.
+The site is an explorable 3D world: visitors ride a camera rail through districts built from his projects, or press F to drive the Dozer robot, a real Synthesis .mira (Mirabuf protobuf) file parsed live in the browser. A static page serves reduced-motion, small-screen and no-WebGL visitors.
