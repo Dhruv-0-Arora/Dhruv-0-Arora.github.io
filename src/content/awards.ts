@@ -3,12 +3,12 @@ import type { Award, LeadershipRole } from "./types";
 export const awards: Award[] = [
   {
     title: "1st globally, TiE Young Entrepreneurs",
-    detail: "$7K prize for Soundwave",
+    detail: "Soundwave",
     year: "2024",
   },
   {
     title: "1st nationally, Diamond Challenge",
-    detail: "$12K prize for Soundwave",
+    detail: "Soundwave",
     year: "2024",
   },
   {

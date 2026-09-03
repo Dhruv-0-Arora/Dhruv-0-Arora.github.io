@@ -76,8 +76,9 @@ export const projects: Project[] = [
   {
     name: "monkeytype-tui",
     accent: "amber",
-    tagline: "Monkeytype typing practice, rebuilt for the terminal in ratatui.",
-    tech: ["Rust", "ratatui"],
+    tagline:
+      "Monkeytype in the terminal, submitting real runs to the live API. Built in a day, largely with AI assistance.",
+    tech: ["Rust", "ratatui", "AI-assisted"],
     repo: "https://github.com/Dhruv-0-Arora/monkeytype-tui",
     tier: "compact",
   },
@@ -120,8 +121,8 @@ export const projects: Project[] = [
     name: "Soundwave",
     accent: "green",
     tagline:
-      "TensorFlow accent-localization model - $150K letter of intent, 1st globally at TiE YE.",
-    tech: ["TensorFlow", "MFCCs", "MATLAB"],
+      "Accent-localization model that became a venture: $150K letter of intent, 1st globally at TiE Young Entrepreneurs.",
+    tech: ["MFCCs", "audio ML", "MATLAB"],
     repo: "https://github.com/Dhruv-0-Arora/soundwave",
     tier: "compact",
   },

@@ -24,4 +24,11 @@ describe("projectForZone", () => {
       expect(text).not.toContain(forbidden);
     }
   });
+
+  it("never prints a Soundwave prize figure and discloses AI assistance", () => {
+    const text = JSON.stringify(projects);
+    expect(text).not.toMatch(/\$7K|\$12K|\$3,000/);
+    const monkeytype = projects.find((p) => p.name === "monkeytype-tui");
+    expect(monkeytype?.tagline).toMatch(/AI assistance/);
+  });
 });
