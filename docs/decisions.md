@@ -1,0 +1,42 @@
+# Decisions
+
+One entry per decision, with the reason.
+Add new entries at the bottom with the date; do not rewrite old ones.
+
+## Concept and interaction
+
+- **The portfolio is one explorable world, not a page with 3D accents** (2026-09-06). The model takes the whole viewport, at up-to-city scale, in the site's existing token aesthetic.
+- **Hybrid interaction**: scroll-driven rails with pointer free-look by default; F takes the wheel of the Dozer; Escape glides back to the nearest rail point. Chosen explicitly over pure rails or pure driving.
+- **The Dozer is the vehicle, reusing the live-parsed `.mira`.** The site already parses a real Synthesis CAD file; driving it is the homage. Not remodelled.
+- **Districts follow the three narrative arcs**: Terminal (speed), Evidence (judgment), Fabrication (physical), plus a sealed Redacted block for the confidential platform, where the confidentiality rule is the design.
+- **All text is DOM.** No in-canvas text; project copy comes from `src/content/projects.ts` by zone slug.
+
+## Runtime
+
+- **No physics engine.** A ~170 line kinematic drive model with fixed 120 Hz substeps is deterministic, unit-testable and arcade-feeling. Frame-rate independence is a test.
+- **Ground follow by raycast against a hidden `col.ground` mesh**, which is the ground plane joined with every surface flagged drivable in Blender. Box colliders are AABBs from `meta.json`.
+- **Theming by material name, no textures.** Blender materials are named after CSS tokens; the runtime reads real values from `getComputedStyle` so `src/index.css` stays the only color source. Dark theme adds emissive to accent and hue tokens (night sim); light theme is a day sim.
+- **Instancers derive colors from the palette in the store** rather than registering with the material registry, because their colors are per instance.
+- **Authored versus procedural split.** Blender authors unique meshes; repetitive fields (bamboo, hexes, frusta, candles) are runtime `InstancedMesh`es anchored on zones from `meta.json`.
+- **meshopt over Draco**: 40 KB decoder against 300 KB of wasm, near-parity on flat-color low-poly geometry.
+- **No LOD; districts are culled beyond 250 m.** Draw calls stay between 12 and 45.
+- **Part names are stripped and meshes joined per material in the build.** The runtime addresses the world through `meta.json` and material names, never part names; only `col.*` keep their names.
+- **Zones may overlap; a closer containing zone takes over at once**, while a single zone keeps 1.25r exit hysteresis. Needed because the hex map is the floor under the Nazar graph.
+- **Look `t` is derived, not hand-tuned.** The exporter sets each look's rail parameter to the nearest rail point; only the hub pins `t` to 0 and 1.
+- **Scroll maps to the rail through a 14-screen spacer.** Programmatic returns from driving set the scroll position to the rail t, so the two never disagree.
+- **Mobile is rails-only**; the wheel needs `(hover: hover) and (pointer: fine)`. Below 380 px, or without WebGL, the static page serves. Reduced motion serves the static page with an opt-in that replaces every camera glide with a cut.
+- **Out of bounds means "off `col.ground` for 0.6 s"**, then a respawn at the nearest rail point with a HUD line, rather than invisible walls.
+
+## Pipeline and repo
+
+- **A single JSON contract shared by Python and TypeScript**, with literal TS lists checked against it by a test, because a JSON import types arrays as `string[]`.
+- **The world is code.** Numbered session scripts on top of `worldlib.py`; `world.blend` is a saved artifact of running them, tracked in plain git (under 1 MB, orphans purged, nothing packed).
+- **Build artifacts in `public/world/` are committed** so Vercel never runs Blender. They are served with a one hour cache plus stale-while-revalidate because they are not content-hashed.
+- **`build-world.ts` runs under Node**, not bun; see the file header.
+- **Generic `.gitignore` only.** Personal and agent material is ignored through `.git/info/exclude`, so the tracked ignore file stays neutral.
+- **Conventional commits, no co-author lines, scoped** `chore(repo|pipeline)`, `feat(sim|world|overlay)`, `content(...)`, `test(...)`, `perf(...)`, `docs`.
+
+## Content
+
+- **Every shipped string passes the content rules** in [content-rules.md](content-rules.md); tests guard the client ceiling, prize figures and the AI disclosure.
+- **Copy is regenerated from the local corpus, never invented.** Numbers are printed exactly or not at all; losses and defects are kept because they make the wins credible.
