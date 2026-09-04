@@ -4,8 +4,10 @@ import { ZONE_SLUGS } from "../world/contract.ts";
 import { projectForZone } from "./ProjectDock.tsx";
 
 describe("projectForZone", () => {
-  it("resolves every contract zone to a catalog entry with copy", () => {
+  it("resolves every project zone to a catalog entry with copy", () => {
     for (const slug of ZONE_SLUGS) {
+      // The hub is the one zone without a project: the panel shows the guide.
+      if (slug === "hub") continue;
       const project = projectForZone(slug);
       expect(project, slug).toBeDefined();
       expect(project?.tagline.length, slug).toBeGreaterThan(10);

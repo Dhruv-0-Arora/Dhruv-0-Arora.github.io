@@ -14,6 +14,7 @@ export const DISTRICTS = [
   "evidence",
   "fabrication",
   "redacted",
+  "backdrop",
 ] as const;
 
 export const ZONE_SLUGS = [
@@ -30,6 +31,7 @@ export const ZONE_SLUGS = [
   "agentic-cad-spike",
   "synthesis",
   "swiftlabs-platform",
+  "hub",
 ] as const;
 
 export const TOKENS = [
@@ -58,6 +60,8 @@ export const TOKENS = [
   "hue-violet-soft",
   "hue-rose-soft",
   "hue-amber-soft",
+  "rock",
+  "snow",
 ] as const;
 
 export type District = (typeof DISTRICTS)[number];

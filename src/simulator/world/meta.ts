@@ -20,6 +20,12 @@ export interface ZoneMeta {
   radius: number;
 }
 
+/** A climbing route on the backdrop: a polyline from foot to summit. */
+export interface RouteMeta {
+  slug: string;
+  points: Vec3[];
+}
+
 export interface BoxColliderMeta {
   name: string;
   min: Vec3;
@@ -31,9 +37,12 @@ export interface WorldMeta {
   rail: RailMeta;
   looks: LookMeta[];
   zones: ZoneMeta[];
+  routes: RouteMeta[];
   colliders: BoxColliderMeta[];
   bounds: { min: Vec3; max: Vec3 };
 }
+
+const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 function isVec3(v: unknown): v is Vec3 {
   return (
@@ -102,6 +111,25 @@ export function validateWorldMeta(input: unknown): string[] {
     }
     for (const slug of contract.zones) {
       if (!seen.has(slug)) errors.push(`zone '${slug}' is missing`);
+    }
+  }
+
+  if (!Array.isArray(meta.routes)) {
+    errors.push("routes must be an array");
+  } else {
+    const seen = new Set<string>();
+    for (const route of meta.routes) {
+      const slug = String(route.slug);
+      if (typeof route.slug !== "string" || !SLUG.test(route.slug)) {
+        errors.push(`route '${slug}' has a bad slug`);
+      }
+      if (seen.has(slug)) errors.push(`route '${slug}' is duplicated`);
+      seen.add(slug);
+      if (!Array.isArray(route.points) || route.points.length < 2) {
+        errors.push(`route '${slug}' needs at least 2 points`);
+      } else if (!route.points.every(isVec3)) {
+        errors.push(`route '${slug}' contains a non-finite point`);
+      }
     }
   }
 

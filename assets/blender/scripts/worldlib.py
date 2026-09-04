@@ -77,6 +77,7 @@ ZONE_RADII = {
     "agentic-cad-spike": 14.0,
     "synthesis": 20.0,
     "swiftlabs-platform": 30.0,
+    "hub": 18.0,
 }
 
 # Light-theme token values from src/index.css, only for viewport preview.
@@ -101,6 +102,8 @@ PREVIEW = {
     "tok.hue-violet-vivid": "#7c3aed",
     "tok.hue-rose-vivid": "#e11d48",
     "tok.hue-amber-vivid": "#d97706",
+    "tok.rock": "#7b8089",
+    "tok.snow": "#eef2f6",
     "ramp.importance.1": "#6b7280",
     "ramp.importance.2": "#0076c5",
     "ramp.importance.3": "#0284c7",

@@ -9,7 +9,10 @@ colliders) on top of the earlier sessions:
 
 * Shared: the hub plaza gets an inlay ring, radial guides toward each road,
   curbs along the roads, and a pair of gate pylons where each road enters
-  its district. The spawn pad is where the Dozer waits.
+  its district. The spawn pad is where the Dozer waits. Topographic contour
+  rings and a chevron loop mark the plaza; the runtime hangs the photo
+  carousel and the project orrery above it. ``zone.hub`` lets the overlay
+  show the how-to guide at spawn.
 * Redacted: one sealed block, chamfered, with a single seal band and a
   ring of bollards. Nothing else, by design: the confidentiality rule is
   the installation. No text, no windows, no door.
@@ -38,6 +41,8 @@ def build_shared(w: World) -> None:
     w.cylinder("shared.hub.plaza", col, (0, 0, 0.3), 18.0, 0.6, "tok.surface", verts=48, drivable=True)
     w.cylinder("shared.hub.inlay", col, (0, 0, 0.62), 9.0, 0.06, "tok.surface-2", verts=48, drivable=True)
     w.cylinder("shared.hub.pad", col, (0, 0, 0.66), 2.5, 0.08, "tok.border", verts=32, drivable=True)
+    build_hub_marks(w, col)
+    w.zone("hub", (0.0, 0.0))
 
     for district, center in CENTERS.items():
         d = center - HUB
@@ -63,6 +68,25 @@ def build_shared(w: World) -> None:
         w.box(f"shared.gate.{district}.lintel", col, (gate.x, gate.y, 4.9), (0.5, ROAD_W + 4.0, 0.3), "tok.text", yaw=yaw)
 
 
+def build_hub_marks(w: World, col) -> None:
+    """Contour rings like a topo map, a socket around the pad, and a chevron
+    loop that invites the visitor to take the wheel. All thin and not
+    drivable, so the ground raycast never sees them."""
+    w.torus("shared.hub.socket", col, (0, 0, 0.70), 3.1, 0.08, "tok.border", major_segments=48, minor_segments=6)
+    w.torus("shared.hub.contour.a", col, (0, 0, 0.66), 5.5, 0.06, "tok.border", major_segments=64, minor_segments=6)
+    w.torus("shared.hub.contour.b", col, (0, 0, 0.61), 12.0, 0.06, "tok.border", major_segments=64, minor_segments=6)
+    w.torus("shared.hub.contour.c", col, (0, 0, 0.61), 15.5, 0.06, "tok.border", major_segments=64, minor_segments=6)
+    # Chevrons on the inlay, pointing counterclockwise around the loop.
+    for i in range(8):
+        a = i / 8 * math.tau
+        cx, cy, _ = polar(HUB, 6.5, a)
+        heading = a + math.pi / 2
+        for side, s in (("l", 1.0), ("r", -1.0)):
+            yaw = heading + s * 0.55
+            ox, oy = -math.cos(yaw) * 0.55, -math.sin(yaw) * 0.55
+            w.box(f"shared.hub.chevron.{i:02d}.{side}", col, (cx + ox, cy + oy, 0.67), (1.5, 0.3, 0.04), "tok.accent", yaw=yaw)
+
+
 def build_redacted(w: World) -> None:
     col = w.by_district["redacted"]
     c = CENTERS["redacted"]
@@ -80,7 +104,7 @@ def build_redacted(w: World) -> None:
 
 def main() -> World:
     w = World()
-    w.wipe_district("shared", [], ["gate"])
+    w.wipe_district("shared", ["hub"], ["gate"])
     w.wipe_district("redacted", ["swiftlabs-platform"], ["redacted"])
     build_shared(w)
     build_redacted(w)

@@ -31,6 +31,9 @@
   --c-hue-violet-soft: rgb(124 58 237 / 0.18);
   --c-hue-rose-soft: rgb(225 29 72 / 0.18);
   --c-hue-amber-soft: rgb(217 119 6 / 0.18);
+  /* Backdrop only: distant rock and snow, hazy by design. */
+  --c-rock: #7b8089;
+  --c-snow: #eef2f6;
   color-scheme: light;
 }
 
@@ -60,6 +63,8 @@
   --c-hue-violet-soft: rgb(167 139 250 / 0.16);
   --c-hue-rose-soft: rgb(251 113 133 / 0.16);
   --c-hue-amber-soft: rgb(251 191 36 / 0.16);
+  --c-rock: #353b46;
+  --c-snow: #b4bfcf;
   color-scheme: dark;
 }
 
@@ -79,6 +84,8 @@
   --color-hue-violet: var(--c-hue-violet);
   --color-hue-rose: var(--c-hue-rose);
   --color-hue-amber: var(--c-hue-amber);
+  --color-rock: var(--c-rock);
+  --color-snow: var(--c-snow);
   --font-display:
     "Space Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;

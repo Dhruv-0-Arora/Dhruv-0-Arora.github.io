@@ -7,8 +7,9 @@ Writes to ``<dir>``:
 
 * ``<district>.glb`` for every district in the contract (Y-up, materials by name,
   no textures, modifiers applied). ``shared.glb`` also carries ``col.ground``.
-* ``meta.json``: the rail polyline, look targets, zones and box colliders,
-  converted to the same Y-up frame as the glbs.
+* ``meta.json``: the rail polyline, look targets, zones, climbing routes and
+  box colliders, converted to the same Y-up frame as the glbs, plus the
+  drivable bounds (the AABB of ``col.ground``).
 * ``lint.json``: the lint report, including per-district triangle counts.
 
 Refuses to export a scene that fails ``lint_scene.py``.
@@ -140,6 +141,7 @@ def build_meta(contract: dict) -> dict:
     closed = bool(rail.data.splines[0].use_cyclic_u)
     looks = []
     zones = []
+    routes = []
     for obj in lint_scene.collection_objects(rails):
         if lint_scene.RAIL_LOOK.match(obj.name):
             position = yup(obj.matrix_world.translation)
@@ -153,8 +155,11 @@ def build_meta(contract: dict) -> dict:
                     "radius": float(obj["radius"]),
                 }
             )
+        elif lint_scene.ROUTE_OBJECT.match(obj.name):
+            routes.append({"slug": obj.name.split(".", 1)[1], "points": rail_points(obj)})
     looks.sort(key=lambda l: l["t"])
     zones.sort(key=lambda z: z["slug"])
+    routes.sort(key=lambda r: r["slug"])
 
     boxes = []
     for obj in lint_scene.collection_objects(colliders):
@@ -164,22 +169,18 @@ def build_meta(contract: dict) -> dict:
         boxes.append({"name": obj.name, "min": lo, "max": hi})
     boxes.sort(key=lambda b: b["name"])
 
-    lo, hi = None, None
-    for district in cols["districts"].values():
-        for obj in lint_scene.collection_objects(root.children[district]):
-            if obj.type != "MESH":
-                continue
-            a, b = world_aabb(obj)
-            lo = a if lo is None else [min(x, y) for x, y in zip(lo, a)]
-            hi = b if hi is None else [max(x, y) for x, y in zip(hi, b)]
+    # Bounds are the drivable world, not the visible one: the Dozer is clamped
+    # to them, and backdrop geometry far beyond the plate must not widen them.
+    lo, hi = world_aabb(bpy.data.objects["col.ground"])
 
     return {
         "version": contract["version"],
         "rail": {"points": points, "closed": closed},
         "looks": looks,
         "zones": zones,
+        "routes": routes,
         "colliders": boxes,
-        "bounds": {"min": lo or [0, 0, 0], "max": hi or [0, 0, 0]},
+        "bounds": {"min": lo, "max": hi},
     }
 
 
@@ -209,7 +210,10 @@ def main() -> None:
     meta = build_meta(contract)
     with open(os.path.join(args.out, "meta.json"), "w", encoding="utf-8") as fh:
         json.dump(meta, fh, separators=(",", ":"))
-    print(f"meta: {len(meta['rail']['points'])} rail points, {len(meta['looks'])} looks, {len(meta['zones'])} zones, {len(meta['colliders'])} colliders")
+    print(
+        f"meta: {len(meta['rail']['points'])} rail points, {len(meta['looks'])} looks, "
+        f"{len(meta['zones'])} zones, {len(meta['routes'])} routes, {len(meta['colliders'])} colliders"
+    )
 
 
 if __name__ == "__main__":

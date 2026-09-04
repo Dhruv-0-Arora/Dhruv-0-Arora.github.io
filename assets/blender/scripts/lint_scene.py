@@ -74,6 +74,7 @@ COLLIDER_OBJECT = re.compile(rf"^col\.(?:ground|box\.{SLUG}(?:\.\d{{3}})?)$")
 RAIL_PATH = re.compile(r"^rail\.path$")
 RAIL_LOOK = re.compile(r"^rail\.look\.\d{2}$")
 ZONE_OBJECT = re.compile(rf"^zone\.(?P<slug>{SLUG})$")
+ROUTE_OBJECT = re.compile(rf"^route\.(?P<slug>{SLUG})$")
 
 
 def material_pattern(contract: dict) -> re.Pattern[str]:
@@ -224,8 +225,18 @@ def lint(scene: bpy.types.Scene | None = None, contract: dict | None = None) -> 
                 radius = obj.get("radius")
                 if not isinstance(radius, (int, float)) or float(radius) <= 0:
                     report.error(f"'{obj.name}' needs a custom property 'radius' > 0")
+            elif ROUTE_OBJECT.match(obj.name):
+                # Climbing routes: polylines the runtime climbers follow.
+                if obj.type != "CURVE":
+                    report.error(f"'{obj.name}' must be a CURVE")
+                elif len(obj.data.splines) != 1:
+                    report.error(f"'{obj.name}' must have exactly one spline")
+                elif len(obj.data.splines[0].points) + len(obj.data.splines[0].bezier_points) < 2:
+                    report.error(f"'{obj.name}' needs at least two points")
             else:
-                report.error(f"'{obj.name}' in {cols['rails']}: expected 'rail.path', 'rail.look.NN' or 'zone.<slug>'")
+                report.error(
+                    f"'{obj.name}' in {cols['rails']}: expected 'rail.path', 'rail.look.NN', 'zone.<slug>' or 'route.<slug>'"
+                )
 
     for name in contract["requiredObjects"]:
         if bpy.data.objects.get(name) is None:

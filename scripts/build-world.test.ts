@@ -73,10 +73,11 @@ describe.skipIf(!hasBlender)("world pipeline (Blender)", () => {
     expect(meta.rail.points.length).toBeGreaterThan(10);
     expect(meta.looks.map((l) => l.t)).toEqual([0, 1]);
     expect(meta.colliders.map((c) => c.name)).toEqual(["col.box.plinth"]);
-    // Blender Z-up (x, y, z) becomes glTF Y-up (x, z, -y): the ground plane
-    // sits at y = 0 and the plinths rise above it.
-    expect(meta.bounds.min[1]).toBeGreaterThanOrEqual(0);
-    expect(meta.bounds.max[1]).toBeGreaterThan(2);
+    expect(meta.routes).toEqual([]);
+    // Bounds are the drivable ground, not the tallest mesh: the fixture's
+    // col.ground is a 400 m plane at z = 0, which in Y-up is y = 0.
+    expect(meta.bounds.min.map(Math.round)).toEqual([-200, 0, -200]);
+    expect(meta.bounds.max.map(Math.round)).toEqual([200, 0, 200]);
 
     const stats = {} as WorldStats;
     for (const district of DISTRICTS) {

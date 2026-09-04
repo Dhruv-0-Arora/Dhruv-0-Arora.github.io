@@ -146,4 +146,7 @@ export const DISTRICT_HINTS: Record<District, THREE.Vector3> = {
   redacted: new THREE.Vector3(-70, 0, -140),
   evidence: new THREE.Vector3(110, 0, -110),
   fabrication: new THREE.Vector3(110, 0, 100),
+  // The mountain ring surrounds everything; its center is the hub so it
+  // streams right after shared and is never distance-culled.
+  backdrop: new THREE.Vector3(0, 0, 0),
 };

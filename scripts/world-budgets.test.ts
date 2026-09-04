@@ -24,8 +24,8 @@ describe("checkBudgets", () => {
     const report = checkBudgets(uniform(50_000, 1_000));
     expect(report.errors).toEqual([]);
     expect(report.warnings).toEqual([]);
-    expect(report.totalBytes).toBe(250_000);
-    expect(report.totalTriangles).toBe(5_000);
+    expect(report.totalBytes).toBe(50_000 * DISTRICTS.length);
+    expect(report.totalTriangles).toBe(1_000 * DISTRICTS.length);
   });
 
   it("fails a district over its wire budget", () => {
@@ -52,27 +52,28 @@ describe("checkBudgets", () => {
   });
 
   it("warns between the soft and hard totals, fails above the hard total", () => {
+    const n = DISTRICTS.length;
     const budgets = {
       tris: contract.budgets.tris,
       bytes: {
-        districts: {
-          shared: 1_000,
-          terminal: 1_000,
-          evidence: 1_000,
-          fabrication: 1_000,
-          redacted: 1_000,
-        },
-        totalSoft: 3_000,
-        totalHard: 4_000,
+        districts: Object.fromEntries(
+          DISTRICTS.map((d) => [d, 1_000]),
+        ) as Record<(typeof DISTRICTS)[number], number>,
+        totalSoft: n * 600,
+        totalHard: n * 800,
       },
     };
     const soft = checkBudgets(uniform(700, 10), budgets);
     expect(soft.errors).toEqual([]);
-    expect(soft.warnings).toEqual(["world is 4KB, over the soft budget 3KB"]);
+    expect(soft.warnings).toEqual([
+      `world is ${((n * 700) / 1000).toFixed(0)}KB, over the soft budget ${((n * 600) / 1000).toFixed(0)}KB`,
+    ]);
 
     const hard = checkBudgets(uniform(900, 10), budgets);
     expect(hard.warnings).toEqual([]);
-    expect(hard.errors).toEqual(["world is 5KB, hard ceiling 4KB"]);
+    expect(hard.errors).toEqual([
+      `world is ${((n * 900) / 1000).toFixed(0)}KB, hard ceiling ${((n * 800) / 1000).toFixed(0)}KB`,
+    ]);
   });
 
   it("fails when authored triangles exceed the total budget", () => {
@@ -82,7 +83,7 @@ describe("checkBudgets", () => {
     };
     const report = checkBudgets(uniform(1, 1_000), budgets);
     expect(report.errors).toEqual([
-      "world has 5000 authored tris, budget 4000",
+      `world has ${1_000 * DISTRICTS.length} authored tris, budget 4000`,
     ]);
   });
 });

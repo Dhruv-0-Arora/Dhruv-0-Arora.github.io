@@ -1,7 +1,7 @@
 {
   "$comment": "Single source of truth shared by the Blender lint/export scripts (Python) and the runtime (TypeScript). Edit here, nowhere else.",
   "version": 1,
-  "districts": ["shared", "terminal", "evidence", "fabrication", "redacted"],
+  "districts": ["shared", "terminal", "evidence", "fabrication", "redacted", "backdrop"],
   "collections": {
     "root": "World",
     "districts": {
@@ -9,7 +9,8 @@
       "terminal": "Terminal",
       "evidence": "Evidence",
       "fabrication": "Fabrication",
-      "redacted": "Redacted"
+      "redacted": "Redacted",
+      "backdrop": "Backdrop"
     },
     "colliders": "Colliders",
     "rails": "Rails"
@@ -40,7 +41,9 @@
       "hue-sky-soft",
       "hue-violet-soft",
       "hue-rose-soft",
-      "hue-amber-soft"
+      "hue-amber-soft",
+      "rock",
+      "snow"
     ],
     "ramps": { "importance": 5 },
     "gradients": ["dirnt"]
@@ -58,10 +61,11 @@
     "orion",
     "agentic-cad-spike",
     "synthesis",
-    "swiftlabs-platform"
+    "swiftlabs-platform",
+    "hub"
   ],
   "requiredObjects": ["rail.path", "col.ground"],
-  "world": { "sizeMeters": 400, "cullDistanceMeters": 250 },
+  "world": { "sizeMeters": 400, "cullDistanceMeters": 320 },
   "budgets": {
     "tris": {
       "districts": {
@@ -69,16 +73,18 @@
         "terminal": 55000,
         "evidence": 45000,
         "fabrication": 70000,
-        "redacted": 5000
+        "redacted": 5000,
+        "backdrop": 30000
       },
       "installations": {
         "astute": 25000,
         "keyboard": 20000,
         "pcb": 30000,
-        "frc": 30000
+        "frc": 30000,
+        "range": 30000
       },
       "installationDefault": 15000,
-      "authoredTotal": 200000,
+      "authoredTotal": 240000,
       "instancedTotal": 250000,
       "dozer": 50000,
       "ceiling": 500000
@@ -89,10 +95,11 @@
         "terminal": 900000,
         "evidence": 900000,
         "fabrication": 1200000,
-        "redacted": 100000
+        "redacted": 100000,
+        "backdrop": 400000
       },
-      "totalSoft": 3600000,
-      "totalHard": 4500000
+      "totalSoft": 4000000,
+      "totalHard": 5000000
     }
   }
 }

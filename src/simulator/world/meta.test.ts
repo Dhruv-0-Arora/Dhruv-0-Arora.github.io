@@ -22,6 +22,15 @@ function validMeta(): WorldMeta {
       position: [i * 10, 0, 0],
       radius: 8,
     })),
+    routes: [
+      {
+        slug: "rainier",
+        points: [
+          [300, 10, 0],
+          [310, 120, 5],
+        ],
+      },
+    ],
     colliders: [{ name: "col.box.plinth", min: [-1, 0, -1], max: [1, 2, 1] }],
     bounds: { min: [-200, 0, -200], max: [200, 50, 200] },
   };
@@ -81,6 +90,38 @@ describe("validateWorldMeta", () => {
     const errors = validateWorldMeta(meta);
     expect(errors).toContain("looks must be sorted by t");
     expect(errors).toContain("look at t=1.5 is outside [0, 1]");
+  });
+
+  it("accepts a world without routes", () => {
+    const meta = validMeta();
+    meta.routes = [];
+    expect(validateWorldMeta(meta)).toEqual([]);
+  });
+
+  it("requires routes to be unique polylines with contract-style slugs", () => {
+    const meta = validMeta();
+    meta.routes = [
+      { slug: "rainier", points: [[0, 0, 0]] },
+      {
+        slug: "rainier",
+        points: [
+          [0, 0, 0],
+          [1, Number.NaN, 1],
+        ],
+      },
+      {
+        slug: "Mt Adams",
+        points: [
+          [0, 0, 0],
+          [1, 1, 1],
+        ],
+      },
+    ];
+    const errors = validateWorldMeta(meta);
+    expect(errors).toContain("route 'rainier' needs at least 2 points");
+    expect(errors).toContain("route 'rainier' is duplicated");
+    expect(errors).toContain("route 'rainier' contains a non-finite point");
+    expect(errors).toContain("route 'Mt Adams' has a bad slug");
   });
 
   it("rejects inverted collider boxes", () => {
