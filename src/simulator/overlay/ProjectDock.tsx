@@ -98,14 +98,20 @@ function CollapseButton({
   );
 }
 
-function GuideBody() {
+const DRIVING_KEYS = new Set(["F", "W", "A", "S", "D", "Esc"]);
+
+function GuideBody({ hasKeyboard }: { hasKeyboard: boolean }) {
+  // Touch-only visitors stay on rails, so the wheel is not offered to them.
+  const steps = hasKeyboard
+    ? guide.steps
+    : guide.steps.filter((s) => !s.keys.some((k) => DRIVING_KEYS.has(k)));
   return (
     <>
       <p className="mt-4 text-[17px] leading-relaxed text-muted">
         {guide.intro}
       </p>
       <ol className="mt-6 space-y-3.5">
-        {guide.steps.map((step) => (
+        {steps.map((step) => (
           <li key={step.text} className="flex items-start gap-4">
             <span className="flex shrink-0 flex-wrap gap-1 pt-0.5">
               {step.keys.map((k) => (
@@ -177,6 +183,7 @@ function ProjectBody({ project, hue }: { project: Project; hue?: Hue }) {
 export function ProjectPanel() {
   const zone = useSim((s) => s.zone);
   const reducedMotion = useSim((s) => s.reducedMotion);
+  const hasKeyboard = useSim((s) => s.hasKeyboard);
   const { collapsed, pulse } = usePanelState();
   const id = useId();
   const project = zone && zone !== "hub" ? projectForZone(zone) : undefined;
@@ -225,7 +232,7 @@ export function ProjectPanel() {
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-7 pb-7 md:px-8 md:pb-8">
             {isGuide ? (
-              <GuideBody />
+              <GuideBody hasKeyboard={hasKeyboard} />
             ) : project ? (
               <ProjectBody project={project} hue={hue} />
             ) : (
