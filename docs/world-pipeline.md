@@ -10,18 +10,19 @@ Deploys never need Blender.
 
 Scene rules the lint checks:
 
-- Collections `World/{Shared,Terminal,Evidence,Fabrication,Redacted,Colliders,Rails}`; cameras may live outside `World`.
+- Collections `World/{Shared,Terminal,Evidence,Fabrication,Redacted,Backdrop,Colliders,Rails}`; cameras may live outside `World`.
 - District objects are named `<district>.<installation>.<part>[.<sub>...]`, prefix matching their collection.
 - Materials are named `tok.<token>`, `ramp.importance.1-5` or `grad.dirnt`, no image textures.
 - `Colliders` holds `col.ground` (mesh) and `col.box.<slug>` empties whose world AABB is the collider.
-- `Rails` holds one `rail.path` curve, `rail.look.NN` empties (optional custom `t`), and one `zone.<slug>` empty per contract zone with a `radius` property.
+- `Rails` holds one `rail.path` curve, `rail.look.NN` empties (optional custom `t`), one `zone.<slug>` empty per contract zone with a `radius` property, and `route.<slug>` polyline curves for the climbers.
 - Per-district and per-installation triangle budgets (contract `budgets.tris`).
 
 ## Sessions
 
 `assets/blender/scripts/sessions/` is a numbered series of scripts built on `worldlib.py`.
 `01_greybox.py` wipes the scene and builds every district as primitives, the rail, zones, colliders and review cameras.
-Each later session (`02_terminal`, `03_evidence`, `04_fabrication`, `05_shared_redacted`) calls `w.wipe_district(...)` for its own district, zones and colliders, rebuilds them in detail, and calls `w.rebuild_ground()`.
+Each later session (`02_terminal`, `03_evidence`, `04_fabrication`, `05_shared_redacted`, `06_backdrop`) calls `w.wipe_district(...)` for its own district, zones and colliders, rebuilds them in detail, and calls `w.rebuild_ground()`.
+`06_backdrop` is procedural: one annular heightfield around the plate with seeded peaks, ridged noise, and per-face material slots (`tok.forest` below the treeline, `tok.rock`, `tok.snow` above each peak's snowline), plus three routes snapped onto the surface with `obj.ray_cast`.
 Running the sessions in order recreates `world.blend` from git history alone.
 
 Helpers in `worldlib.py`: `box`, `cylinder`, `strut` (a to b), `sphere`, `plane`, `torus`, `empty`, `zone`, `collider_box`, `camera`, plus `material(name)` which sets preview colors from the light theme.
@@ -44,12 +45,19 @@ Always run the lint before saving; the exporter refuses a failing scene anyway.
 
 ## Export and build
 
-`export_world.py` writes `<district>.glb` (Y-up, materials by name, modifiers applied; `shared.glb` also carries `col.ground`), `meta.json` (rail polyline, looks, zones, box colliders, bounds, all Y-up) and `lint.json`.
+`export_world.py` writes `<district>.glb` (Y-up, materials by name, modifiers applied; `shared.glb` also carries `col.ground`), `meta.json` (rail polyline, looks, zones, routes, box colliders, bounds, all Y-up) and `lint.json`.
+`bounds` is the AABB of `col.ground`, the drivable world, so scenery beyond the plate never widens the Dozer's clamp.
 `scripts/build-world.ts` runs Blender, validates `meta.json` with `parseWorldMeta`, optimizes each glb with gltf-transform (`dedup({keepUniqueNames})`, `flatten`, `join` everything except `col.*`, `weld`, `prune`, meshopt) and enforces wire and triangle budgets.
 It runs under Node because bun resolves a CJS entry that eagerly requires the native `sharp` module.
 
-Budgets (contract): per district up to 55k tris and 1.2 MB, 200k authored tris total, 3.6 MB soft and 4.5 MB hard total wire.
-The current world is about 530 KB and 30k authored triangles, plus roughly 100k instanced triangles at runtime.
+Budgets (contract): per district up to 70k tris and 1.2 MB, 240k authored tris total, 4.0 MB soft and 5.0 MB hard total wire.
+The current world is about 800 KB and 48k authored triangles (15k of them the backdrop ring), plus roughly 300k triangles at runtime with instancers and the shadow pass.
+
+## Media
+
+Photos for the hub carousel come from originals in `assets/gallery/` (untracked): `bun run media:build` cover-fits them to 3:2 at 1280 px into `public/gallery/` and prints the entries to paste into `src/content/gallery.ts`.
+Clips for the zone screens are transcoded with `scripts/transcode-media.sh <clip> <zone>` (ffmpeg via `nix shell nixpkgs#ffmpeg`) into `public/media/<zone>.webm` and `.mp4`, then referenced by `src` in `src/simulator/world/zoneScreens.ts`.
+The lint forbids textures in the world itself; every picture is applied at runtime.
 
 ## Verification loop for a world change
 

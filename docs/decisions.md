@@ -40,3 +40,16 @@ Add new entries at the bottom with the date; do not rewrite old ones.
 
 - **Every shipped string passes the content rules** in [content-rules.md](content-rules.md); tests guard the client ceiling, prize figures and the AI disclosure.
 - **Copy is regenerated from the local corpus, never invented.** Numbers are printed exactly or not at all; losses and defects are kept because they make the wins credible.
+
+## Detail pass (2026-09-07)
+
+- **The backdrop is a district, not a sky texture.** A `backdrop` collection exports like any other so budgets, lint and the retint registry apply; it is exempt from distance culling and loads first because its center is the hub.
+- **One heightfield, not separate peaks.** An annular grid with a seeded height function guarantees nothing floats and gives continuous ridgelines; peaks are pointed cones with ridged noise, snow and forest are per-face material slots.
+- **Bounds mean the drivable world.** The Dozer clamp reads the AABB of `col.ground`, so scenery can extend to 470 m without changing driving.
+- **Climbing routes are authored, not computed.** `route.<slug>` curves snapped to the mesh in Blender export as polylines; the runtime only interpolates.
+- **Trees are scattered at runtime from the loaded mesh.** The shipped glb is flat-shaded, so every triangle's slope and height are available for free; no tree positions in meta.
+- **Sky and sun are palette-driven.** A shader dome and one directional light share `sky.ts`; day is a warm sun in the north-north-east so the volcano's shadow reaches the hub, night is a moon in the south-west with stars.
+- **Shadows are real shadow maps.** One 2048 map over the whole ring; soft PCF; loaded meshes cast and receive, instancers opt in. Measured at 60 fps on the authoring GPU.
+- **Pictures never enter the world pipeline.** Photos and clips are runtime textures on `MediaSurface`; a palette placeholder shows until a source exists.
+- **The hub zone is the guide.** A `hub` contract zone at the origin makes the proximity tracker open the how-to panel at spawn without special-casing rails.
+- **Panel collapse is remembered.** Collapsing once means collapsed until reopened; a new zone pulses the tab instead of reopening.

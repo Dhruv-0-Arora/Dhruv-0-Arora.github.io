@@ -35,7 +35,24 @@ Dates are absolute.
 | shipped world | about 530 KB, 30k authored triangles |
 | runtime | 60 fps headed, 12 to 45 draw calls |
 
+## 2026-09-07: detail pass
+
+**Backdrop.** A `backdrop` district: one seeded heightfield ring around the plate with a Rainier-like volcano behind the hub, a flat-topped Adams, ridges and fillers; snow above blended snowlines, forest below the treeline; three climbing routes exported in `meta.routes`. New tokens `rock`, `snow`, `forest`. Bounds redefined as the `col.ground` AABB. Cull distance 320 m, fog 200 to 760 m, camera far 1000 m.
+
+**Runtime fields.** Climbers (rope teams with headlamps), conifers scattered on the range, a palette sky dome with sun or moon and stars, one shadow-casting sun, soft shadow maps.
+
+**Hub.** Topo contour rings, a socket and a chevron loop in Blender; at runtime a photo carousel (six frames, `src/content/gallery.ts`), an orrery of the projects, and a `hub` zone that opens the guide.
+
+**Screens.** Floating 16:9 panels at Orion and Synthesis with a palette placeholder, ready for `public/media/<zone>.webm`.
+
+**Panel.** The dock became `ProjectPanel`: a glass sheet on the left with larger type, highlight stat, all tech, repo and demo pills, a collapse tab with pulse, a bottom sheet under 768 px.
+
+Verification: lint, build and 112 tests green; 60 fps headed in both themes at the hub, the north rail, Orion and Synthesis with 80 to 170 draw calls.
+
 ## Open items
+
+- Photos for the carousel and clips for the two screens are placeholders until Dhruv provides them.
+- The forest band is a flat token; tree density and the treeline could vary per peak.
 
 - World poster images for the moment before the canvas is ready.
 - The keyboard-terrain drive (ramps and keys as ground) has not been exercised in a browser.

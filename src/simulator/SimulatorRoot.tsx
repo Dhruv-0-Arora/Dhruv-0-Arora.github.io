@@ -6,7 +6,7 @@ import { RAIL_SCREENS, useInputs } from "./controls/useInputs.ts";
 import { StaticPortfolio } from "./fallback/StaticPortfolio.tsx";
 import { useSimulatorCapability } from "./fallback/useSimulatorCapability.ts";
 import { HUD } from "./overlay/HUD.tsx";
-import { ProjectDock } from "./overlay/ProjectDock.tsx";
+import { ProjectPanel } from "./overlay/ProjectDock.tsx";
 import { sim } from "./simStore.ts";
 
 const WorldCanvas = lazy(() => import("./WorldCanvas.tsx"));
@@ -58,7 +58,7 @@ function SimulatorShell({ reducedMotion }: { reducedMotion: boolean }) {
         data-rail-spacer
       />
       <HUD />
-      <ProjectDock />
+      <ProjectPanel />
       <HiddenProjectList />
     </>
   );
