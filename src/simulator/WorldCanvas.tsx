@@ -18,6 +18,7 @@ import type { District, ZoneSlug } from "./world/contract.ts";
 import { BambooGrove } from "./world/instancing/BambooGrove.tsx";
 import { CameraFrusta } from "./world/instancing/CameraFrusta.tsx";
 import { Candlesticks } from "./world/instancing/Candlesticks.tsx";
+import { Climbers } from "./world/instancing/Climbers.tsx";
 import { HexGround } from "./world/instancing/HexGround.tsx";
 import { IMC_SHAPE, KERMS_SHAPE } from "./world/instancing/ohlc.ts";
 import {
@@ -55,6 +56,7 @@ function WorldScene() {
   );
   const onTerminal = useMemo(() => register("terminal"), [register]);
   const onEvidence = useMemo(() => register("evidence"), [register]);
+  const onBackdrop = useMemo(() => register("backdrop"), [register]);
 
   useEffect(() => {
     sim.set({ worldReady: true });
@@ -115,6 +117,9 @@ function WorldScene() {
           onMount={onEvidence}
         />
       ) : null}
+      {world.meta.routes.length > 0 ? (
+        <Climbers routes={world.meta.routes} onMount={onBackdrop} />
+      ) : null}
       <Suspense fallback={null}>
         <DozerRig rigRef={dozerRef} />
       </Suspense>
@@ -136,7 +141,7 @@ export default function WorldCanvas() {
       <Canvas
         frameloop={active ? "always" : "never"}
         dpr={[1, 1.5]}
-        camera={{ fov: 50, near: 0.3, far: 900, position: [0, 12, 40] }}
+        camera={{ fov: 50, near: 0.3, far: 1000, position: [0, 12, 40] }}
         gl={{ antialias: true, powerPreference: "high-performance" }}
       >
         <Suspense fallback={null}>

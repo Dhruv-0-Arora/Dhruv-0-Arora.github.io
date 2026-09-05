@@ -263,10 +263,12 @@ export function CameraRig({ world, districts, dozerRef }: CameraRigProps) {
       }
     }
 
-    // Distance culling per district.
+    // Distance culling per district. The backdrop is the horizon: always on.
     const cull = contract.world.cullDistanceMeters;
     for (const d of districts) {
-      d.group.visible = d.center.distanceTo(camera.position) < cull;
+      d.group.visible =
+        d.district === "backdrop" ||
+        d.center.distanceTo(camera.position) < cull;
     }
 
     // Stats, twice a second.

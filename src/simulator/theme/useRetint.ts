@@ -6,8 +6,10 @@ import { sim } from "../simStore.ts";
 import { readPalette } from "./palette.ts";
 import { type MaterialRegistry, RETINT_MS } from "./retint.ts";
 
-const FOG_NEAR = 160;
-const FOG_FAR = 460;
+// Wide enough that the mountain ring (250 to 470 m out) fades into the sky
+// rather than vanishing; districts are culled well inside this range.
+const FOG_NEAR = 200;
+const FOG_FAR = 760;
 
 function readCssPalette() {
   const style = getComputedStyle(document.documentElement);
