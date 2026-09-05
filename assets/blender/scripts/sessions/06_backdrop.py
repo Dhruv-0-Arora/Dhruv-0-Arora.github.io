@@ -11,8 +11,10 @@ One annular heightfield surrounds the 400 m plate: foothills at the plate's
 edge rising to a Cascade skyline. The peaks are named after the ones that
 frame the Pacific Northwest, with a Rainier-like volcano centered behind
 the hub as seen from spawn and a flat-topped Adams to its west. Faces above
-each peak's snowline take ``tok.snow``; the rest is ``tok.rock``. Three
-routes, snapped onto the surface, are exported for the runtime climbers.
+each peak's snowline take ``tok.snow``, faces below the treeline take
+``tok.forest`` (the runtime scatters conifers on them), and the band between
+is ``tok.rock``. Three routes, snapped onto the surface, are exported for
+the runtime climbers.
 
 Everything is seeded, so the range is the same on every run.
 """
@@ -140,6 +142,14 @@ def snowline(x: float, y: float) -> float:
     return acc / total if total > 1e-6 else 999.0
 
 
+TREELINE = 38.0
+
+
+def treeline(x: float, y: float) -> float:
+    """Forest gives way to rock here; it climbs a little on the sunnier faces."""
+    return TREELINE + 9.0 * fbm(x * 0.02 + 5.0, y * 0.02 - 3.0, 3)
+
+
 def build_range(w: World) -> bpy.types.Object:
     col = w.by_district["backdrop"]
     bm = bmesh.new()
@@ -155,6 +165,7 @@ def build_range(w: World) -> bpy.types.Object:
         grid.append(ring)
     bm.verts.ensure_lookup_table()
     snow_faces: list[int] = []
+    forest_faces: list[int] = []
     for i in range(RINGS):
         for j in range(SEGMENTS):
             a = grid[i][j]
@@ -168,8 +179,11 @@ def build_range(w: World) -> bpy.types.Object:
             cy = (a.co.y + b.co.y + c.co.y + d.co.y) / 4.0
             cz = (a.co.z + b.co.z + c.co.z + d.co.z) / 4.0
             line = snowline(cx, cy) + 6.0 * fbm(cx * 0.03, cy * 0.03, 2)
+            steep = max(a.co.z, b.co.z, c.co.z, d.co.z) - min(a.co.z, b.co.z, c.co.z, d.co.z)
             if cz > line:
                 snow_faces.append(i * SEGMENTS + j)
+            elif cz < treeline(cx, cy) and steep < 14.0:
+                forest_faces.append(i * SEGMENTS + j)
     mesh = bpy.data.meshes.new("backdrop.range.ring")
     bm.to_mesh(mesh)
     bm.free()
@@ -178,8 +192,11 @@ def build_range(w: World) -> bpy.types.Object:
     # snow slot is assigned once both materials are in place.
     w._add(obj, col, "tok.rock", False)
     obj.data.materials.append(material("tok.snow"))
+    obj.data.materials.append(material("tok.forest"))
     for index in snow_faces:
         mesh.polygons[index].material_index = 1
+    for index in forest_faces:
+        mesh.polygons[index].material_index = 2
     return obj
 
 

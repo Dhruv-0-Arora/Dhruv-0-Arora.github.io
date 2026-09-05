@@ -43,7 +43,8 @@
       "hue-rose-soft",
       "hue-amber-soft",
       "rock",
-      "snow"
+      "snow",
+      "forest"
     ],
     "ramps": { "importance": 5 },
     "gradients": ["dirnt"]

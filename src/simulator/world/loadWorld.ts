@@ -78,6 +78,10 @@ export async function loadDistrict(
   });
   for (const mesh of meshes) {
     mesh.matrixAutoUpdate = false;
+    // The sun casts real shadows: the range onto the plate, buildings onto
+    // the ground. Instancers opt in individually.
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
     const materials = Array.isArray(mesh.material)
       ? mesh.material
       : [mesh.material];

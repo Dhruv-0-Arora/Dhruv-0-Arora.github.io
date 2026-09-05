@@ -62,6 +62,7 @@ export const TOKENS = [
   "hue-amber-soft",
   "rock",
   "snow",
+  "forest",
 ] as const;
 
 export type District = (typeof DISTRICTS)[number];

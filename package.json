@@ -10,7 +10,8 @@
     "test": "vitest run",
     "preview": "vite preview",
     "format": "biome format --write src scripts",
-    "world:build": "node scripts/build-world.ts"
+    "world:build": "node scripts/build-world.ts",
+    "media:build": "node scripts/build-media.ts"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",

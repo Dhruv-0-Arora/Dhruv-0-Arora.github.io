@@ -19,7 +19,8 @@ function readCssPalette() {
 /**
  * Keeps the world painted in the page's tokens. Reads `--c-*` from the DOM
  * on every theme change, hands the palette to the registry, and lerps the
- * scene background and fog alongside so the horizon never flashes.
+ * scene background alongside so the horizon never flashes. The fog color
+ * belongs to the sky dome, which paints it to match its horizon.
  */
 export function useRetint(registry: MaterialRegistry): void {
   const [theme] = useTheme();
@@ -56,12 +57,6 @@ export function useRetint(registry: MaterialRegistry): void {
     const eased = f * (2 - f);
     if (scene.background instanceof THREE.Color) {
       scene.background.copy(bgFrom.current).lerp(bgTo.current, eased);
-    }
-    if (
-      scene.fog instanceof THREE.Fog &&
-      scene.background instanceof THREE.Color
-    ) {
-      scene.fog.color.copy(scene.background);
     }
   });
 }

@@ -50,6 +50,7 @@ export function HexGround({ zone, onMount }: HexGroundProps) {
       metalness: 0,
     });
     const instanced = new THREE.InstancedMesh(geometry, material, cells.length);
+    instanced.receiveShadow = true;
     const m = new THREE.Matrix4();
     cells.forEach((cell, i) => {
       m.makeTranslation(

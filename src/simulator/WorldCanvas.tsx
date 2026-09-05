@@ -19,8 +19,12 @@ import { BambooGrove } from "./world/instancing/BambooGrove.tsx";
 import { CameraFrusta } from "./world/instancing/CameraFrusta.tsx";
 import { Candlesticks } from "./world/instancing/Candlesticks.tsx";
 import { Climbers } from "./world/instancing/Climbers.tsx";
+import { Conifers } from "./world/instancing/Conifers.tsx";
 import { HexGround } from "./world/instancing/HexGround.tsx";
+import { HubOrrery } from "./world/instancing/HubOrrery.tsx";
 import { IMC_SHAPE, KERMS_SHAPE } from "./world/instancing/ohlc.ts";
+import { PhotoCarousel } from "./world/instancing/PhotoCarousel.tsx";
+import { ZoneScreen } from "./world/instancing/ZoneScreen.tsx";
 import {
   DISTRICT_HINTS,
   districtLoadOrder,
@@ -28,6 +32,9 @@ import {
   loadDistrict,
   loadWorldBase,
 } from "./world/loadWorld.ts";
+import { SkyDome } from "./world/SkyDome.tsx";
+import { SunLight } from "./world/SunLight.tsx";
+import { ZONE_SCREENS } from "./world/zoneScreens.ts";
 
 function WorldScene() {
   const world = use(loadWorldBase());
@@ -57,6 +64,9 @@ function WorldScene() {
   const onTerminal = useMemo(() => register("terminal"), [register]);
   const onEvidence = useMemo(() => register("evidence"), [register]);
   const onBackdrop = useMemo(() => register("backdrop"), [register]);
+  const onShared = useMemo(() => register("shared"), [register]);
+  const onFabrication = useMemo(() => register("fabrication"), [register]);
+  const backdrop = districts.find((d) => d.district === "backdrop")?.group;
 
   useEffect(() => {
     sim.set({ worldReady: true });
@@ -91,9 +101,10 @@ function WorldScene() {
 
   return (
     <>
-      <hemisphereLight args={["#ffffff", "#8a8f98", 0.9]} />
-      <directionalLight position={[80, 140, 60]} intensity={1.2} />
-      <ambientLight intensity={0.2} />
+      <SkyDome />
+      <SunLight />
+      <hemisphereLight args={["#ffffff", "#8a8f98", 0.7]} />
+      <ambientLight intensity={0.15} />
       <primitive object={world.shared.group} />
       {districts.map((d) => (
         <primitive key={d.district} object={d.group} />
@@ -120,6 +131,20 @@ function WorldScene() {
       {world.meta.routes.length > 0 ? (
         <Climbers routes={world.meta.routes} onMount={onBackdrop} />
       ) : null}
+      {backdrop ? <Conifers backdrop={backdrop} onMount={onBackdrop} /> : null}
+      <HubOrrery zones={world.meta.zones} onMount={onShared} />
+      <PhotoCarousel onMount={onShared} />
+      {ZONE_SCREENS.map((spec) => {
+        const anchor = zone(spec.zone);
+        return anchor ? (
+          <ZoneScreen
+            key={spec.zone}
+            zone={anchor}
+            spec={spec}
+            onMount={onFabrication}
+          />
+        ) : null;
+      })}
       <Suspense fallback={null}>
         <DozerRig rigRef={dozerRef} />
       </Suspense>
@@ -141,6 +166,7 @@ export default function WorldCanvas() {
       <Canvas
         frameloop={active ? "always" : "never"}
         dpr={[1, 1.5]}
+        shadows="soft"
         camera={{ fov: 50, near: 0.3, far: 1000, position: [0, 12, 40] }}
         gl={{ antialias: true, powerPreference: "high-performance" }}
       >
