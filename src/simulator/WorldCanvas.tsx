@@ -162,7 +162,7 @@ export default function WorldCanvas() {
   const active = useCanvasActive(containerRef);
 
   return (
-    <div ref={containerRef} className="h-full w-full">
+    <div ref={containerRef} className="h-full w-full cursor-grab">
       <Canvas
         frameloop={active ? "always" : "never"}
         dpr={[1, 1.5]}

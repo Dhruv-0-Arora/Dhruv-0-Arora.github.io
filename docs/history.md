@@ -45,6 +45,8 @@ Dates are absolute.
 
 **Screens.** Floating 16:9 panels at Orion and Synthesis with a palette placeholder, ready for `public/media/<zone>.webm`.
 
+**Drag to look.** Click-and-drag on the world replaces the pointer-position sway: deltas feed `DragLook`, which coasts, clamps pitch and recenters with rail travel; a drag that starts and ends between frames still lands.
+
 **Panel.** The dock became `ProjectPanel`: a glass sheet on the left with larger type, highlight stat, all tech, repo and demo pills, a collapse tab with pulse, a bottom sheet under 768 px.
 
 Verification: lint, build and 112 tests green; 60 fps headed in both themes at the hub, the north rail, Orion and Synthesis with 80 to 170 draw calls.

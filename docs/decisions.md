@@ -53,3 +53,4 @@ Add new entries at the bottom with the date; do not rewrite old ones.
 - **Pictures never enter the world pipeline.** Photos and clips are runtime textures on `MediaSurface`; a palette placeholder shows until a source exists.
 - **The hub zone is the guide.** A `hub` contract zone at the origin makes the proximity tracker open the how-to panel at spawn without special-casing rails.
 - **Panel collapse is remembered.** Collapsing once means collapsed until reopened; a new zone pulses the tab instead of reopening.
+- **Look is click-and-drag, not pointer sway** (2026-09-07). The world follows the pointer, coasts after release with a capped velocity, and eases back to the rail's aim as the visitor scrolls, so a section is never entered facing backwards. Only the canvas starts a drag, so overlays keep their clicks; touch keeps scrolling as the travel gesture. Pure state machine in `controls/dragLook.ts`.

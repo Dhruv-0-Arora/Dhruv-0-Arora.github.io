@@ -47,6 +47,7 @@ Nothing in tracked files may depend on them.
 | Module | Responsibility |
 |---|---|
 | `controls/railPath.ts` | arc-length rail, eased look targets |
+| `controls/dragLook.ts` | click-and-drag look offset with coasting and recentering |
 | `controls/driveController.ts` | fixed 120 Hz substeps, circle-vs-AABB push-out, ground follow |
 | `proximity/proximity.ts` | one active zone, 1.25r exit hysteresis, handover to a closer overlapping zone |
 | `theme/palette.ts`, `retint.ts`, `oklab.ts` | CSS color parsing, material-name binding, lerped repaint, Oklab gradients |

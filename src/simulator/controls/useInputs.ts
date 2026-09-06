@@ -39,8 +39,8 @@ export function scrollProgress(): number {
 }
 
 /**
- * DOM side of the controls: scroll and pointer feed the rails camera, keys
- * feed the drive model, F and Escape switch modes. Losing focus or the tab
+ * DOM side of the controls: scroll and a click-and-drag look feed the
+ * rails camera, keys feed the drive model, F and Escape switch modes. Losing focus or the tab
  * clears every held key so the Dozer never drives itself.
  */
 export function useInputs(): void {
@@ -54,15 +54,44 @@ export function useInputs(): void {
     const onScroll = () => {
       frame.scrollT = scrollProgress();
     };
-    const onPointer = (e: PointerEvent) => {
-      // A finger dragging the page is scrolling, not looking around.
-      if (e.pointerType === "touch") return;
-      frame.pointerX = (e.clientX / window.innerWidth) * 2 - 1;
-      frame.pointerY = -((e.clientY / window.innerHeight) * 2 - 1);
+    // Click and drag on the world to look around. Only the canvas starts a
+    // drag, so the overlays keep their clicks; a finger dragging the page
+    // is scrolling, not looking.
+    let dragPointer: number | null = null;
+    let dragX = 0;
+    let dragY = 0;
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.button !== 0 || e.pointerType === "touch") return;
+      if (!(e.target instanceof HTMLCanvasElement)) return;
+      if (sim.get().mode !== "rails") return;
+      dragPointer = e.pointerId;
+      dragX = e.clientX;
+      dragY = e.clientY;
+      try {
+        e.target.setPointerCapture(e.pointerId);
+      } catch {
+        /* synthetic or already-released pointer: window listeners still track it */
+      }
+      e.target.style.cursor = "grabbing";
+      frame.look.begin();
+    };
+    const onPointerMove = (e: PointerEvent) => {
+      if (e.pointerId !== dragPointer) return;
+      const h = window.innerHeight || 1;
+      frame.look.move((e.clientX - dragX) / h, (e.clientY - dragY) / h);
+      dragX = e.clientX;
+      dragY = e.clientY;
+    };
+    const endDrag = (e?: PointerEvent) => {
+      if (dragPointer === null || (e && e.pointerId !== dragPointer)) return;
+      if (e?.target instanceof HTMLCanvasElement) e.target.style.cursor = "";
+      dragPointer = null;
+      frame.look.end();
     };
     const release = () => {
       pressed.clear();
       frame.input = { throttle: 0, steer: 0 };
+      endDrag();
     };
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -99,7 +128,10 @@ export function useInputs(): void {
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
-    window.addEventListener("pointermove", onPointer, { passive: true });
+    window.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("pointermove", onPointerMove, { passive: true });
+    window.addEventListener("pointerup", endDrag);
+    window.addEventListener("pointercancel", endDrag);
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
     window.addEventListener("blur", release);
@@ -108,7 +140,10 @@ export function useInputs(): void {
       mql.removeEventListener("change", updateKeyboard);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
-      window.removeEventListener("pointermove", onPointer);
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", endDrag);
+      window.removeEventListener("pointercancel", endDrag);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", release);

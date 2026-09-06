@@ -4,6 +4,7 @@ import {
   type ControlMode,
   transition,
 } from "./controls/controlMachine.ts";
+import { DragLook } from "./controls/dragLook.ts";
 import type { DriveInput } from "./controls/driveController.ts";
 import type { Palette } from "./theme/palette.ts";
 import type { District, ZoneSlug } from "./world/contract.ts";
@@ -34,9 +35,8 @@ export interface SimSnapshot {
 export interface FrameState {
   /** Scroll progress 0..1 along the rail. */
   scrollT: number;
-  /** Pointer in [-1, 1], +x right, +y up. */
-  pointerX: number;
-  pointerY: number;
+  /** Click-and-drag look offset on the rails, fed by pointer deltas. */
+  look: DragLook;
   input: DriveInput;
   /** Rail t the camera is gliding back to; null until computed. */
   returnT: number | null;
@@ -63,8 +63,7 @@ const listeners = new Set<() => void>();
 
 export const frame: FrameState = {
   scrollT: 0,
-  pointerX: 0,
-  pointerY: 0,
+  look: new DragLook(),
   input: { throttle: 0, steer: 0 },
   returnT: null,
   probe: [0, 0, 0],
@@ -102,8 +101,7 @@ export const sim = {
   reset(): void {
     snapshot = initial;
     frame.scrollT = 0;
-    frame.pointerX = 0;
-    frame.pointerY = 0;
+    frame.look.reset();
     frame.input = { throttle: 0, steer: 0 };
     frame.returnT = null;
     frame.probe = [0, 0, 0];

@@ -47,6 +47,8 @@ export function HUD() {
         ) : (
           <p className={mono}>
             scroll to travel
+            <span className="text-faint"> · </span>
+            drag to look
             {canDrive ? (
               <>
                 <span className="text-faint"> · </span>

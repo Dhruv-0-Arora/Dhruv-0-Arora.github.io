@@ -19,7 +19,10 @@ export const guide: Guide = {
     "This portfolio is a world. Every installation is a real project, and the vehicle on the pad is a real robot CAD file parsed live in the browser.",
   steps: [
     { keys: ["scroll"], text: "Travel the rail through the four districts." },
-    { keys: ["move"], text: "Move the pointer to look around while you ride." },
+    {
+      keys: ["drag"],
+      text: "Click and drag the world to look around; let go and it coasts.",
+    },
     { keys: ["F"], text: "Take the wheel of the Dozer." },
     { keys: ["W", "A", "S", "D"], text: "Drive. The arrow keys work too." },
     { keys: ["Esc"], text: "Let go of the wheel and glide back to the rail." },

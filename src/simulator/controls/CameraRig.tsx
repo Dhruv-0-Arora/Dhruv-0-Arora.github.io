@@ -20,10 +20,6 @@ const RAILS = {
   scrollFollow: 4,
   /** Camera position damping, 1/s. */
   positionFollow: 8,
-  /** Free-look range from the pointer, radians. */
-  lookYaw: 0.5,
-  lookPitch: 0.22,
-  lookFollow: 6,
 } as const;
 
 const CHASE = {
@@ -112,8 +108,6 @@ export function CameraRig({ world, districts, dozerRef }: CameraRigProps) {
     [],
   );
   const smoothT = useRef(0);
-  const lookYaw = useRef(0);
-  const lookPitch = useRef(0);
   const currentTarget = useRef<THREE.Vector3 | null>(null);
   const statClock = useRef({ t: 0, frames: 0 });
 
@@ -180,9 +174,11 @@ export function CameraRig({ world, districts, dozerRef }: CameraRigProps) {
     let probeZ = drive.current.z;
 
     if (snap.mode === "rails") {
+      const before = smoothT.current;
       smoothT.current +=
         (frame.scrollT - smoothT.current) * damp(RAILS.scrollFollow);
       const t = smoothT.current;
+      const travel = Math.abs(t - before);
       world.rail.pointAt(t, s.v3);
       s.pos.set(s.v3[0], s.v3[1], s.v3[2]);
       lookTargetAt(world.meta.looks, t, s.v3);
@@ -190,17 +186,14 @@ export function CameraRig({ world, districts, dozerRef }: CameraRigProps) {
       probeX = s.aim.x;
       probeZ = s.aim.z;
 
-      // Free-look: rotate the aim direction by the pointer offset.
-      lookYaw.current +=
-        (-frame.pointerX * RAILS.lookYaw - lookYaw.current) *
-        damp(RAILS.lookFollow);
-      lookPitch.current +=
-        (frame.pointerY * RAILS.lookPitch - lookPitch.current) *
-        damp(RAILS.lookFollow);
+      // Click-and-drag look: rotate the aim by the offset, which coasts
+      // after release and recenters as the rail travels.
+      frame.look.options.reducedMotion = snap.reducedMotion;
+      const look = frame.look.step(dt, travel);
       s.dir.subVectors(s.aim, s.pos);
       s.right.crossVectors(s.dir, s.up).normalize();
-      s.dir.applyAxisAngle(s.up, lookYaw.current);
-      s.dir.applyAxisAngle(s.right, lookPitch.current);
+      s.dir.applyAxisAngle(s.up, look.yaw);
+      s.dir.applyAxisAngle(s.right, look.pitch);
       s.desired.addVectors(s.pos, s.dir);
 
       camera.position.lerp(s.pos, damp(RAILS.positionFollow));
@@ -227,8 +220,7 @@ export function CameraRig({ world, districts, dozerRef }: CameraRigProps) {
           drive.current.z,
         ]);
         smoothT.current = frame.returnT;
-        lookYaw.current = 0;
-        lookPitch.current = 0;
+        frame.look.reset();
         const max = document.documentElement.scrollHeight - window.innerHeight;
         window.scrollTo({ top: frame.returnT * max, behavior: "instant" });
       }
