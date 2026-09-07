@@ -21,6 +21,21 @@ export function sunDirection(night: boolean): THREE.Vector3 {
   ).normalize();
 }
 
+/**
+ * The pole of the Milky Way's plane. The band is the great circle 90
+ * degrees from it: with the pole low over the moon's side of the sky the
+ * band arches over the opposite side, tilted about 61 degrees to the
+ * horizon and well clear of the moon's glow.
+ */
+export function galacticPole(): THREE.Vector3 {
+  const elevation = 0.5;
+  const azimuth = Math.PI * 1.22;
+  return new THREE.Vector3(
+    Math.cos(elevation) * Math.sin(azimuth),
+    Math.sin(elevation),
+    -Math.cos(elevation) * Math.cos(azimuth),
+  ).normalize();
+}
+
+/** Where the sky dome draws the sun or moon, in meters from the camera. */
 export const SUN_DISTANCE = 700;
-/** Half-extent of the orthographic shadow frustum, covering the ring. */
-export const SHADOW_EXTENT = 520;

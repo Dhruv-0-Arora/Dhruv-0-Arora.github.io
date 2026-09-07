@@ -29,6 +29,12 @@ export const GRADIENT_TOKENS: Record<string, TokenName> = {
 /** Tokens that glow at night: the accents, never the surfaces. */
 const EMISSIVE_PREFIXES = ["accent", "hue-"];
 const NIGHT_EMISSIVE = 0.55;
+/**
+ * The ground plate is painted in the page background, which at night is
+ * close to black and would swallow any moonlight. Lift it toward the muted
+ * tone by this much so moon shadows have something to fall on.
+ */
+export const NIGHT_GROUND_LIFT = 0.22;
 
 export function bindingToken(binding: MaterialBinding): TokenName {
   switch (binding.kind) {
@@ -111,6 +117,9 @@ export class MaterialRegistry {
     const rgba = palette[t.token];
     t.from.copy(t.material.color);
     toColor(rgba, t.to);
+    if (theme === "dark" && t.token === "bg") {
+      t.to.lerp(toColor(palette.muted), NIGHT_GROUND_LIFT);
+    }
     t.emissiveFrom = t.material.emissiveIntensity;
     t.emissiveTo =
       theme === "dark" && isEmissiveToken(t.token) ? NIGHT_EMISSIVE : 0;

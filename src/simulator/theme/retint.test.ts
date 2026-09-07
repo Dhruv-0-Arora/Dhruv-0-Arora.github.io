@@ -105,3 +105,15 @@ describe("MaterialRegistry", () => {
     expect(m.color.r).toBeCloseTo(0.2158, 3);
   });
 });
+
+describe("night ground", () => {
+  it("lifts the background plate off black in the dark and not by day", () => {
+    const registry = new MaterialRegistry();
+    const ground = registry.register(mat("tok.bg"));
+    const p = palette("#000000", { bg: "#000000", muted: "#ffffff" });
+    registry.apply(p, "dark", true);
+    expect(ground.color.r).toBeGreaterThan(0.01);
+    registry.apply(p, "light", true);
+    expect(ground.color.r).toBe(0);
+  });
+});
