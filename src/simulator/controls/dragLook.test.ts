@@ -18,9 +18,9 @@ describe("DragLook", () => {
     drag(look, 0.25, 0);
     expect(look.yaw).toBeCloseTo(0.25 * DRAG_LOOK_DEFAULTS.sensitivity);
     expect(look.pitch).toBe(0);
-    // Dragging down pulls the world down, so the view looks up (+pitch).
+    // Dragging down looks down (-pitch), clamped at the limit.
     drag(look, 0, 3);
-    expect(look.pitch).toBe(DRAG_LOOK_DEFAULTS.pitchLimit);
+    expect(look.pitch).toBe(-DRAG_LOOK_DEFAULTS.pitchLimit);
   });
 
   it("keeps a drag that starts and ends between frames", () => {

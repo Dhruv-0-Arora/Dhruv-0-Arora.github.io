@@ -75,10 +75,12 @@ export class DragLook {
   private consume(dt: number): void {
     const o = this.options;
     if (this.dx === 0 && this.dy === 0) return;
-    // The world follows the pointer: dragging right turns the view left.
+    // Horizontally the world follows the pointer: dragging right turns the
+    // view left. Vertically the view follows the pointer: dragging down
+    // looks down, which is what people expect from a mouse.
     // Positive yaw turns left, positive pitch looks up.
     const dYaw = this.dx * o.sensitivity;
-    const dPitch = this.dy * o.sensitivity;
+    const dPitch = -this.dy * o.sensitivity;
     this.yaw += dYaw;
     this.pitch += dPitch;
     // Smooth the velocity estimate so one jittery frame cannot fling.
