@@ -49,8 +49,8 @@ export const DRIVE = {
   turnRate: 2.4,
   /** Speed at which the vehicle turns at its full rate, m/s. */
   turnSaturation: 5,
-  /** Collision circle, meters. */
-  radius: 0.75,
+  /** Collision circle, meters, for the 2 m Dozer. */
+  radius: 1.3,
   /** Vehicle body height above the ground sample, meters. */
   ride: 0,
   /** Speed kept per substep while rubbing a collider (~0.55/s of contact). */

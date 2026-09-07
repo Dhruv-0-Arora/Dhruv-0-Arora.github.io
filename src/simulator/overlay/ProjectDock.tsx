@@ -98,7 +98,7 @@ function CollapseButton({
   );
 }
 
-const DRIVING_KEYS = new Set(["F", "W", "A", "S", "D", "Esc"]);
+const DRIVING_KEYS = new Set(["F", "T", "W", "A", "S", "D", "Esc"]);
 
 function GuideBody({ hasKeyboard }: { hasKeyboard: boolean }) {
   // Touch-only visitors stay on rails, so the wheel is not offered to them.
@@ -147,6 +147,15 @@ function ProjectBody({ project, hue }: { project: Project; hue?: Hue }) {
         <p className="mt-5 text-[17px] leading-relaxed text-muted">
           {project.description}
         </p>
+      ) : null}
+      {project.details && project.details.length > 0 ? (
+        <ul className="mt-5 space-y-2.5 border-l-2 border-border pl-4">
+          {project.details.map((line) => (
+            <li key={line} className="text-[15px] leading-relaxed text-muted">
+              {line}
+            </li>
+          ))}
+        </ul>
       ) : null}
       <div className="mt-6 flex flex-wrap gap-2">
         {project.tech.map((t) => (

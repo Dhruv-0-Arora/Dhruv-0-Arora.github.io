@@ -16,7 +16,7 @@ export const guide: Guide = {
   kicker: "the simulator",
   title: "How to explore",
   intro:
-    "This portfolio is a world. Every installation is a real project, and the vehicle on the pad is a real robot CAD file parsed live in the browser.",
+    "This portfolio is a world. Every installation is a real project, the vehicle on the pad is a real robot CAD file parsed live in the browser, and the biplane above it is a 1903 Flyer at full size.",
   steps: [
     { keys: ["scroll"], text: "Travel the rail through the four districts." },
     {
@@ -25,7 +25,14 @@ export const guide: Guide = {
     },
     { keys: ["F"], text: "Take the wheel of the Dozer." },
     { keys: ["W", "A", "S", "D"], text: "Drive. The arrow keys work too." },
-    { keys: ["Esc"], text: "Let go of the wheel and glide back to the rail." },
+    {
+      keys: ["T"],
+      text: "Take off in the Flyer hanging over the pad. W and S for throttle, A and D to bank, the up and down arrows to climb and dive.",
+    },
+    {
+      keys: ["Esc"],
+      text: "Let go of the wheel, or land, and glide back to the rail.",
+    },
     {
       keys: ["theme"],
       text: "The toggle in the corner switches between the day sim and the night sim.",

@@ -50,8 +50,8 @@ export function ProjectPane({ project, index, getSmoothed }: ProjectPaneProps) {
         project.accent
           ? HUE_HEX[project.accent][theme === "dark" ? "dark" : "lightVivid"]
           : theme === "dark"
-            ? "#f97316"
-            : "#e05e0b",
+            ? "#5fc383"
+            : "#2f7d4f",
       ),
     [project.accent, theme],
   );

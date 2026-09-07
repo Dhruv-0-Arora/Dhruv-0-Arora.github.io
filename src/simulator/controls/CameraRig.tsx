@@ -2,10 +2,13 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { type RefObject, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { DOZER_YAW_OFFSET } from "../dozer/DozerRig.tsx";
+import { FLYER_PERCH } from "../flyer/FlyerRig.tsx";
 import { ProximityTracker } from "../proximity/proximity.ts";
 import { frame, sim } from "../simStore.ts";
 import { contract } from "../world/contract.ts";
+import type { HeightGrid } from "../world/heightGrid.ts";
 import type { LoadedDistrict, WorldBase } from "../world/loadWorld.ts";
+import type { ControlMode } from "./controlMachine.ts";
 import { parseDevCamera } from "./devCamera.ts";
 import {
   advance,
@@ -13,6 +16,12 @@ import {
   type DriveWorld,
   IDLE_INPUT,
 } from "./driveController.ts";
+import {
+  advanceFlight,
+  createFlightState,
+  type FlightWorld,
+  IDLE_FLIGHT,
+} from "./flightController.ts";
 import { lookTargetAt } from "./railPath.ts";
 
 /** Rail-following and chase-camera feel. */
@@ -24,11 +33,23 @@ const RAILS = {
 } as const;
 
 const CHASE = {
-  back: 7,
-  up: 3.2,
-  aimUp: 0.8,
+  back: 9.5,
+  up: 4.2,
+  aimUp: 1.1,
   follow: 5,
 } as const;
+
+/** Chase camera for the Flyer: further back, looking well ahead of the nose. */
+const FLY = {
+  back: 16,
+  up: 5,
+  aimAhead: 14,
+  follow: 4,
+} as const;
+
+/** The flyable circle stays inside the outer ring of the range. */
+const FLIGHT_RADIUS = 460;
+const FLIGHT_CEILING = 230;
 
 const RETURN = {
   follow: 3,
@@ -52,13 +73,23 @@ interface CameraRigProps {
   world: WorldBase;
   districts: readonly LoadedDistrict[];
   dozerRef: RefObject<THREE.Group | null>;
+  flyerRef: RefObject<THREE.Group | null>;
+  /** Terrain heights for the flight floor; null until the range loads. */
+  terrain: HeightGrid | null;
 }
 
 /**
- * The frame loop: integrates the Dozer, places the camera for the current
- * control mode, runs proximity, culls far districts, and samples stats.
+ * The frame loop: integrates the Dozer and the Flyer, places the camera
+ * for the current control mode, runs proximity, culls far districts, and
+ * samples stats.
  */
-export function CameraRig({ world, districts, dozerRef }: CameraRigProps) {
+export function CameraRig({
+  world,
+  districts,
+  dozerRef,
+  flyerRef,
+  terrain,
+}: CameraRigProps) {
   const camera = useThree((s) => s.camera);
   const gl = useThree((s) => s.gl);
 
@@ -86,6 +117,20 @@ export function CameraRig({ world, districts, dozerRef }: CameraRigProps) {
   }, [world, raycaster]);
 
   const drive = useRef(createDriveState(0, 0, 0, 0));
+  const flight = useRef(
+    createFlightState(FLYER_PERCH.x, FLYER_PERCH.y, FLYER_PERCH.z),
+  );
+  const flightWorld = useMemo<FlightWorld>(
+    () => ({
+      floorHeight: (x, z) => (terrain ? terrain.heightAt(x, z) : 0),
+      radius: FLIGHT_RADIUS,
+      ceiling: FLIGHT_CEILING,
+    }),
+    [terrain],
+  );
+  const lastMode = useRef<ControlMode>("rails");
+  /** Which vehicle the camera left from, for the glide back to the rail. */
+  const vehicle = useRef<"dozer" | "flyer">("dozer");
   const offGround = useRef(0);
   const lostHold = useRef(0);
   const lastHeight = useRef<number | null>(0);
@@ -101,6 +146,7 @@ export function CameraRig({ world, districts, dozerRef }: CameraRigProps) {
       aim: new THREE.Vector3(),
       dir: new THREE.Vector3(),
       right: new THREE.Vector3(),
+      forward: new THREE.Vector3(),
       target: new THREE.Vector3(),
       desired: new THREE.Vector3(),
       up: new THREE.Vector3(0, 1, 0),
@@ -168,9 +214,46 @@ export function CameraRig({ world, districts, dozerRef }: CameraRigProps) {
       ? () => 1
       : (rate: number) => 1 - Math.exp(-rate * dt);
 
+    // Mode changes: taking off starts the flight from wherever the Flyer
+    // hangs, heading the way it was facing.
+    if (snap.mode !== lastMode.current) {
+      const rig = flyerRef.current;
+      if (snap.mode === "flying" && rig) {
+        flight.current = createFlightState(
+          rig.position.x,
+          rig.position.y,
+          rig.position.z,
+          rig.rotation.y,
+        );
+        vehicle.current = "flyer";
+      } else if (snap.mode === "driving") {
+        vehicle.current = "dozer";
+      }
+      lastMode.current = snap.mode;
+    }
+
     // Vehicle: always integrated so a parked Dozer settles onto the ground.
     const input = snap.mode === "driving" ? frame.input : IDLE_INPUT;
     advance(drive.current, input, dt, driveWorld);
+
+    // The Flyer keeps gliding while the camera returns from it, so it never
+    // freezes mid-air in view; it re-perches once the rails have it.
+    const flyerActive =
+      snap.mode === "flying" ||
+      (snap.mode === "returning" && vehicle.current === "flyer");
+    if (flyerActive) {
+      const f = advanceFlight(
+        flight.current,
+        snap.mode === "flying" ? frame.flight : IDLE_FLIGHT,
+        dt,
+        flightWorld,
+      );
+      const rig = flyerRef.current;
+      if (rig) {
+        rig.position.set(f.x, f.y, f.z);
+        rig.rotation.set(-f.pitch, f.yaw, f.roll, "YXZ");
+      }
+    }
 
     // Out of bounds: off the collision ground for long enough means the
     // world has no floor here. Put the Dozer back on the nearest rail point.
@@ -239,6 +322,21 @@ export function CameraRig({ world, districts, dozerRef }: CameraRigProps) {
 
       camera.position.lerp(s.pos, damp(RAILS.positionFollow));
       target.lerp(s.desired, damp(RAILS.positionFollow));
+    } else if (snap.mode === "flying") {
+      const f = flight.current;
+      const cp = Math.cos(f.pitch);
+      s.forward.set(
+        Math.sin(f.yaw) * cp,
+        Math.sin(f.pitch),
+        Math.cos(f.yaw) * cp,
+      );
+      s.desired.set(f.x, f.y, f.z).addScaledVector(s.forward, -FLY.back);
+      s.desired.y += FLY.up;
+      camera.position.lerp(s.desired, damp(FLY.follow));
+      s.aim.set(f.x, f.y, f.z).addScaledVector(s.forward, FLY.aimAhead);
+      target.lerp(s.aim, damp(FLY.follow * 2));
+      probeX = f.x;
+      probeZ = f.z;
     } else if (snap.mode === "driving") {
       const yaw = drive.current.yaw;
       s.desired.set(
@@ -255,11 +353,9 @@ export function CameraRig({ world, districts, dozerRef }: CameraRigProps) {
       target.lerp(s.aim, damp(CHASE.follow * 2));
     } else {
       if (frame.returnT === null) {
-        frame.returnT = world.rail.nearestT([
-          drive.current.x,
-          drive.current.y,
-          drive.current.z,
-        ]);
+        const from =
+          vehicle.current === "flyer" ? flight.current : drive.current;
+        frame.returnT = world.rail.nearestT([from.x, from.y, from.z]);
         smoothT.current = frame.returnT;
         frame.look.reset();
         const max = document.documentElement.scrollHeight - window.innerHeight;
@@ -282,7 +378,8 @@ export function CameraRig({ world, districts, dozerRef }: CameraRigProps) {
 
     // Proximity, and the probe other systems react to (hex glow).
     frame.probe[0] = probeX;
-    frame.probe[1] = drive.current.y;
+    frame.probe[1] =
+      snap.mode === "flying" ? flight.current.y : drive.current.y;
     frame.probe[2] = probeZ;
     const change = tracker.update(probeX, probeZ);
     if (change.entered || change.exited) {

@@ -6,6 +6,7 @@ import {
 } from "./controls/controlMachine.ts";
 import { DragLook } from "./controls/dragLook.ts";
 import type { DriveInput } from "./controls/driveController.ts";
+import { type FlightInput, IDLE_FLIGHT } from "./controls/flightController.ts";
 import type { Palette } from "./theme/palette.ts";
 import type { District, ZoneSlug } from "./world/contract.ts";
 
@@ -38,6 +39,8 @@ export interface FrameState {
   /** Click-and-drag look offset on the rails, fed by pointer deltas. */
   look: DragLook;
   input: DriveInput;
+  /** Held flight keys while flying the Flyer. */
+  flight: FlightInput;
   /** Rail t the camera is gliding back to; null until computed. */
   returnT: number | null;
   /** Where attention is: the camera aim on rails, the Dozer when driving. */
@@ -65,6 +68,7 @@ export const frame: FrameState = {
   scrollT: 0,
   look: new DragLook(),
   input: { throttle: 0, steer: 0 },
+  flight: { ...IDLE_FLIGHT },
   returnT: null,
   probe: [0, 0, 0],
 };
@@ -89,6 +93,7 @@ export const sim = {
     if (next !== snapshot.mode) {
       if (next === "returning") frame.returnT = null;
       if (next !== "driving") frame.input = { throttle: 0, steer: 0 };
+      if (next !== "flying") frame.flight = { ...IDLE_FLIGHT };
       sim.set({ mode: next });
     }
     return next;
@@ -103,6 +108,7 @@ export const sim = {
     frame.scrollT = 0;
     frame.look.reset();
     frame.input = { throttle: 0, steer: 0 };
+    frame.flight = { ...IDLE_FLIGHT };
     frame.returnT = null;
     frame.probe = [0, 0, 0];
     emit();

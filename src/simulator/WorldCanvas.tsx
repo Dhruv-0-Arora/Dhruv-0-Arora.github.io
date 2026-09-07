@@ -12,16 +12,17 @@ import type * as THREE from "three";
 import { useCanvasActive } from "../lib/useCanvasActive";
 import { CameraRig } from "./controls/CameraRig.tsx";
 import { DozerRig } from "./dozer/DozerRig.tsx";
+import { FlyerRig } from "./flyer/FlyerRig.tsx";
 import { sim } from "./simStore.ts";
 import { useRetint } from "./theme/useRetint.ts";
 import type { District, ZoneSlug } from "./world/contract.ts";
+import { heightGridFromObject } from "./world/heightGrid.ts";
 import { BambooGrove } from "./world/instancing/BambooGrove.tsx";
 import { CameraFrusta } from "./world/instancing/CameraFrusta.tsx";
 import { Candlesticks } from "./world/instancing/Candlesticks.tsx";
 import { Climbers } from "./world/instancing/Climbers.tsx";
 import { Conifers } from "./world/instancing/Conifers.tsx";
 import { HexGround } from "./world/instancing/HexGround.tsx";
-import { HubOrrery } from "./world/instancing/HubOrrery.tsx";
 import { IMC_SHAPE, KERMS_SHAPE } from "./world/instancing/ohlc.ts";
 import { PhotoCarousel } from "./world/instancing/PhotoCarousel.tsx";
 import { ZoneScreen } from "./world/instancing/ZoneScreen.tsx";
@@ -40,6 +41,7 @@ import { ZONE_SCREENS } from "./world/zoneScreens.ts";
 function WorldScene() {
   const world = use(loadWorldBase());
   const dozerRef = useRef<THREE.Group>(null);
+  const flyerRef = useRef<THREE.Group>(null);
   const [districts, setDistricts] = useState<LoadedDistrict[]>([]);
   const [instanced, setInstanced] = useState<LoadedDistrict[]>([]);
   useRetint(world.registry);
@@ -68,6 +70,11 @@ function WorldScene() {
   const onShared = useMemo(() => register("shared"), [register]);
   const onFabrication = useMemo(() => register("fabrication"), [register]);
   const backdrop = districts.find((d) => d.district === "backdrop")?.group;
+  // The flight floor: a coarse polar heightmap of the range, built once.
+  const terrain = useMemo(
+    () => (backdrop ? heightGridFromObject(backdrop, 200, 480) : null),
+    [backdrop],
+  );
 
   useEffect(() => {
     sim.set({ worldReady: true });
@@ -132,7 +139,7 @@ function WorldScene() {
       ) : null}
       {backdrop ? <Terrain backdrop={backdrop} /> : null}
       {backdrop ? <Conifers backdrop={backdrop} onMount={onBackdrop} /> : null}
-      <HubOrrery zones={world.meta.zones} onMount={onShared} />
+      <FlyerRig rigRef={flyerRef} />
       <PhotoCarousel onMount={onShared} />
       {ZONE_SCREENS.map((spec) => {
         const anchor = zone(spec.zone);
@@ -152,6 +159,8 @@ function WorldScene() {
         world={world}
         districts={[world.shared, ...districts, ...instanced]}
         dozerRef={dozerRef}
+        flyerRef={flyerRef}
+        terrain={terrain}
       />
     </>
   );

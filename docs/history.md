@@ -61,6 +61,16 @@ Verification: lint, build and 112 tests green; 60 fps headed in both themes at t
 
 **Tooling.** `?cam=x,y,z&at=x,y,z&fov=n` pins a development camera for close inspection.
 
+## 2026-09-07: the Flyer, green accent, bigger Dozer, technical copy
+
+**Centerpiece and second vehicle.** The project orrery is gone; a life-size 1903 Flyer hangs over the spawn pad with its props idling. T takes off from the perch into an arcade flight model (W and S throttle, A and D bank, arrows climb and dive, Escape lands); the terrain floor is a polar heightmap of the range built once at load, and the world's edge turns the nose home.
+
+**Accent.** Ember orange became forest green in both themes (`--c-accent`, `on-accent`, favicon, hero light, showcase fallbacks); the authored `tok.accent` meshes followed through the retint.
+
+**Dozer.** Drives at 2 m instead of 1.1 m; collision radius 1.3 m; chase camera pulled back.
+
+**Copy.** All thirteen zone projects rewritten from the corpus with a `details` list of technical facts, rendered in the panel; tests assert the fixed authorship framings.
+
 ## Open items
 
 - Photos for the carousel and clips for the two screens are placeholders until Dhruv provides them.

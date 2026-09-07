@@ -31,7 +31,7 @@ function proceduralTexture(project: Project): THREE.Texture {
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext("2d");
-  const hex = project.accent ? HUE_HEX[project.accent].dark : "#f97316";
+  const hex = project.accent ? HUE_HEX[project.accent].dark : "#5fc383";
 
   if (ctx) {
     const gradient = ctx.createLinearGradient(0, 0, w, h);

@@ -95,7 +95,7 @@ export function RobotScene() {
       <ambientLight intensity={0.35} />
       <directionalLight position={[4, 6, 3]} intensity={1.4} castShadow />
       <directionalLight position={[-5, 3, -4]} intensity={0.4} />
-      <pointLight position={[-3, 1.2, -3]} intensity={8} color="#f97316" />
+      <pointLight position={[-3, 1.2, -3]} intensity={8} color="#5fc383" />
       <group ref={pivot} position={[0, -0.68, 0]}>
         <primitive object={group} />
       </group>

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { frame, sim } from "../simStore.ts";
+import type { FlightInput } from "./flightController.ts";
 
 /** Screens of scroll that map onto the full rail loop. */
 export const RAIL_SCREENS = 14;
@@ -18,6 +19,38 @@ const STEER_KEYS: Record<string, number> = {
   KeyD: 1,
   ArrowRight: 1,
 };
+
+const FLIGHT_THROTTLE_KEYS: Record<string, number> = { KeyW: 1, KeyS: -1 };
+const FLIGHT_STEER_KEYS: Record<string, number> = {
+  KeyA: -1,
+  ArrowLeft: -1,
+  KeyD: 1,
+  ArrowRight: 1,
+};
+const FLIGHT_PITCH_KEYS: Record<string, number> = { ArrowUp: 1, ArrowDown: -1 };
+const FLIGHT_KEYS = new Set([
+  ...Object.keys(FLIGHT_THROTTLE_KEYS),
+  ...Object.keys(FLIGHT_STEER_KEYS),
+  ...Object.keys(FLIGHT_PITCH_KEYS),
+]);
+
+/** Held keys to a flight input: W/S throttle, A/D bank, arrows climb and dive. */
+export function flightFromKeys(pressed: ReadonlySet<string>): FlightInput {
+  let throttle = 0;
+  let steer = 0;
+  let pitch = 0;
+  for (const code of pressed) {
+    throttle += FLIGHT_THROTTLE_KEYS[code] ?? 0;
+    steer += FLIGHT_STEER_KEYS[code] ?? 0;
+    pitch += FLIGHT_PITCH_KEYS[code] ?? 0;
+  }
+  const clamp = (v: number) => Math.max(-1, Math.min(1, v));
+  return {
+    throttle: clamp(throttle),
+    steer: clamp(steer),
+    pitch: clamp(pitch),
+  };
+}
 
 /** Translates held keys into a drive input; opposite keys cancel. */
 export function inputFromKeys(pressed: ReadonlySet<string>) {
@@ -40,8 +73,9 @@ export function scrollProgress(): number {
 
 /**
  * DOM side of the controls: scroll and a click-and-drag look feed the
- * rails camera, keys feed the drive model, F and Escape switch modes. Losing focus or the tab
- * clears every held key so the Dozer never drives itself.
+ * rails camera, keys feed the drive and flight models, F, T and Escape
+ * switch modes. Losing focus or the tab clears every held key so neither
+ * vehicle ever drives itself.
  */
 export function useInputs(): void {
   useEffect(() => {
@@ -91,6 +125,7 @@ export function useInputs(): void {
     const release = () => {
       pressed.clear();
       frame.input = { throttle: 0, steer: 0 };
+      frame.flight = flightFromKeys(pressed);
       endDrag();
     };
     const onKeyDown = (e: KeyboardEvent) => {
@@ -104,22 +139,42 @@ export function useInputs(): void {
       const mode = sim.get().mode;
       if (e.code === "KeyF") {
         e.preventDefault();
-        sim.dispatch({ type: mode === "driving" ? "RELEASE" : "TAKE_WHEEL" });
+        if (mode !== "flying") {
+          sim.dispatch({ type: mode === "driving" ? "RELEASE" : "TAKE_WHEEL" });
+        }
         return;
       }
-      if (e.code === "Escape" && mode === "driving") {
-        sim.dispatch({ type: "RELEASE" });
-        return;
-      }
-      if (mode !== "driving") return;
-      if (e.code in THROTTLE_KEYS || e.code in STEER_KEYS) {
+      if (e.code === "KeyT") {
         e.preventDefault();
-        pressed.add(e.code);
-        frame.input = inputFromKeys(pressed);
+        if (mode !== "driving") {
+          sim.dispatch({ type: mode === "flying" ? "LAND" : "TAKE_OFF" });
+        }
+        return;
+      }
+      if (e.code === "Escape") {
+        if (mode === "driving") sim.dispatch({ type: "RELEASE" });
+        if (mode === "flying") sim.dispatch({ type: "LAND" });
+        return;
+      }
+      if (mode === "driving") {
+        if (e.code in THROTTLE_KEYS || e.code in STEER_KEYS) {
+          e.preventDefault();
+          pressed.add(e.code);
+          frame.input = inputFromKeys(pressed);
+        }
+      } else if (mode === "flying") {
+        if (FLIGHT_KEYS.has(e.code)) {
+          e.preventDefault();
+          pressed.add(e.code);
+          frame.flight = flightFromKeys(pressed);
+        }
       }
     };
     const onKeyUp = (e: KeyboardEvent) => {
-      if (pressed.delete(e.code)) frame.input = inputFromKeys(pressed);
+      if (pressed.delete(e.code)) {
+        frame.input = inputFromKeys(pressed);
+        frame.flight = flightFromKeys(pressed);
+      }
     };
     const onVisibility = () => {
       if (document.hidden) release();
@@ -151,11 +206,12 @@ export function useInputs(): void {
     };
   }, []);
 
-  // Lock page scroll while driving so the wheel keys never move the page.
+  // Lock page scroll while piloting so the keys never move the page.
   useEffect(() => {
     return sim.subscribe(() => {
-      const driving = sim.get().mode === "driving";
-      document.documentElement.style.overflow = driving ? "hidden" : "";
+      const mode = sim.get().mode;
+      const piloting = mode === "driving" || mode === "flying";
+      document.documentElement.style.overflow = piloting ? "hidden" : "";
     });
   }, []);
 }

@@ -11,7 +11,7 @@ colliders) on top of the earlier sessions:
   curbs along the roads, and a pair of gate pylons where each road enters
   its district. The spawn pad is where the Dozer waits. Topographic contour
   rings and a chevron loop mark the plaza; the runtime hangs the photo
-  carousel and the project orrery above it. ``zone.hub`` lets the overlay
+  carousel and hangs the Flyer above it. ``zone.hub`` lets the overlay
   show the how-to guide at spawn.
 * Redacted: one sealed block, chamfered, with a single seal band and a
   ring of bollards. Nothing else, by design: the confidentiality rule is

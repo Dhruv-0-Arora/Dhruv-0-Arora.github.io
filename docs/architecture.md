@@ -33,14 +33,15 @@ Nothing in tracked files may depend on them.
 1. `SimulatorRoot` decides capability: `simulator`, or `reduced-motion` (static page with an "enter anyway" button), `narrow` (<380px) and `no-webgl` (static page).
 2. `SimulatorShell` mounts DOM listeners (`useInputs`), a fixed full-viewport canvas layer, a tall scroll spacer (14 screens = one loop of the rail), the `HUD`, the `ProjectDock`, and a screen-reader-only project list.
 3. `WorldCanvas` (lazy, in the `three` chunk) loads `meta.json` and `shared.glb` plus the Dozer, then streams the other districts nearest-first (the `backdrop` ring first, since its center is the hub) and mounts the runtime instancers, the sky dome and the sun.
-4. `CameraRig` is the frame loop: integrates the drive model, places the camera for the current mode, runs zone proximity, culls districts by distance (320 m, never the backdrop), respawns the Dozer if it leaves the collision ground, samples stats.
+4. `CameraRig` is the frame loop: integrates the drive and flight models, places the camera for the current mode, runs zone proximity, culls districts by distance (320 m, never the backdrop), respawns the Dozer if it leaves the collision ground, samples stats.
 5. `useRetint` reads `--c-*` custom properties from the DOM on every theme change and repaints every world material and the background over 200 ms; `SkyDome` lerps its own colors on the same clock and paints the fog color to match its horizon.
 
 ## State
 
 - `simStore.ts` holds React-visible state (`mode`, `zone`, readiness, `palette`, `signalLost`, stats) behind `useSyncExternalStore`, and a mutable `frame` object for per-frame values (scroll t, pointer, drive input, probe position) that never re-render React.
 - Control mode is a pure transition table in `controlMachine.ts`: `rails` (scroll drives the camera) -> `driving` (F) -> `returning` (Escape) -> `rails`.
-- Driving is unavailable on touch-only devices and until the world and Dozer are loaded.
+- Driving and flying are unavailable on touch-only devices and until the world and Dozer are loaded.
+- Modes: `rails`, `driving` (F), `flying` (T), `returning`; Escape leaves either vehicle and the camera glides to the nearest rail point. The Flyer keeps gliding during the return and re-perches once the rails have the camera.
 
 ## Pure cores, all unit tested
 
@@ -48,6 +49,8 @@ Nothing in tracked files may depend on them.
 |---|---|
 | `controls/railPath.ts` | arc-length rail, eased look targets |
 | `controls/dragLook.ts` | click-and-drag look offset with coasting and recentering |
+| `controls/flightController.ts` | arcade flight for the Flyer: throttle, bank, pitch, floor and ceiling, homing at the edge |
+| `world/heightGrid.ts` | polar heightmap of the range built from its vertices, the flight floor |
 | `controls/devCamera.ts` | development-only fixed camera from `?cam=&at=&fov=` |
 | `world/terrain/terrainField.ts` | treeline and forest weight, mirrored in the terrain shader |
 | `controls/driveController.ts` | fixed 120 Hz substeps, circle-vs-AABB push-out, ground follow |
@@ -61,7 +64,7 @@ Nothing in tracked files may depend on them.
 `src/simulator/world/instancing/` holds one component per repetitive or animated field, anchored on a zone, a route or a loaded district from `meta.json`.
 Bamboo grove on `dirnt`, hex map on `cypher`, camera frusta on `altigoz`, candlesticks on `kerms` and `imc-prosperity-4`.
 On the backdrop: `Climbers` (rope teams walking `meta.routes`, pure path math in `climbPath.ts`) and `Conifers` (trees scattered over the loaded range in proportion to the terrain field's forest weight).
-At the hub: `HubOrrery` (a ring per district, an orb per project) and `PhotoCarousel` (six frames fed by `src/content/gallery.ts`).
+At the hub: `PhotoCarousel` (six frames fed by `src/content/gallery.ts`) and, hanging over the pad, the Flyer (`flyer/FlyerRig.tsx`, a life-size 1903 biplane from primitives, props idling until it is flown).
 `ZoneScreen` hangs a 16:9 panel at the zones listed in `world/zoneScreens.ts`; `mediaSurface.ts` paints its placeholder and swaps in a photo or a looping video.
 They derive per-instance colors from the palette in the store, so they follow the theme like authored materials.
 

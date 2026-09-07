@@ -44,6 +44,15 @@ export function HUD() {
             <span className="text-faint"> · </span>
             esc to return to the rails
           </p>
+        ) : mode === "flying" ? (
+          <p className={mono}>
+            w s throttle
+            <span className="text-faint"> · </span>a d bank
+            <span className="text-faint"> · </span>
+            up down climb and dive
+            <span className="text-faint"> · </span>
+            esc to land
+          </p>
         ) : (
           <p className={mono}>
             scroll to travel
@@ -58,6 +67,14 @@ export function HUD() {
                   className="pointer-events-auto text-text underline decoration-border underline-offset-4 transition-colors hover:text-accent hover:decoration-accent"
                 >
                   F to take the wheel
+                </button>
+                <span className="text-faint"> · </span>
+                <button
+                  type="button"
+                  onClick={() => sim.dispatch({ type: "TAKE_OFF" })}
+                  className="pointer-events-auto text-text underline decoration-border underline-offset-4 transition-colors hover:text-accent hover:decoration-accent"
+                >
+                  T to take off
                 </button>
               </>
             ) : null}

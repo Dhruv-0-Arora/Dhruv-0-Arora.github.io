@@ -7,10 +7,12 @@ import {
 
 const can = { canDrive: true };
 const cannot = { canDrive: false };
-const MODES: ControlMode[] = ["rails", "driving", "returning"];
+const MODES: ControlMode[] = ["rails", "driving", "flying", "returning"];
 const EVENTS: ControlEvent["type"][] = [
   "TAKE_WHEEL",
+  "TAKE_OFF",
   "RELEASE",
+  "LAND",
   "RETURNED",
   "DISABLE",
 ];
@@ -19,15 +21,27 @@ describe("transition", () => {
   it("implements the full table", () => {
     const expected: Record<string, ControlMode> = {
       "rails+TAKE_WHEEL": "driving",
+      "rails+TAKE_OFF": "flying",
       "rails+RELEASE": "rails",
+      "rails+LAND": "rails",
       "rails+RETURNED": "rails",
       "rails+DISABLE": "rails",
       "driving+TAKE_WHEEL": "driving",
+      "driving+TAKE_OFF": "driving",
       "driving+RELEASE": "returning",
+      "driving+LAND": "driving",
       "driving+RETURNED": "driving",
       "driving+DISABLE": "returning",
+      "flying+TAKE_WHEEL": "flying",
+      "flying+TAKE_OFF": "flying",
+      "flying+RELEASE": "flying",
+      "flying+LAND": "returning",
+      "flying+RETURNED": "flying",
+      "flying+DISABLE": "returning",
       "returning+TAKE_WHEEL": "driving",
+      "returning+TAKE_OFF": "flying",
       "returning+RELEASE": "returning",
+      "returning+LAND": "returning",
       "returning+RETURNED": "rails",
       "returning+DISABLE": "returning",
     };
@@ -40,16 +54,18 @@ describe("transition", () => {
     }
   });
 
-  it("refuses to take the wheel when driving is unavailable", () => {
+  it("refuses the wheel and the Flyer when driving is unavailable", () => {
     expect(transition("rails", { type: "TAKE_WHEEL" }, cannot)).toBe("rails");
+    expect(transition("rails", { type: "TAKE_OFF" }, cannot)).toBe("rails");
     expect(transition("returning", { type: "TAKE_WHEEL" }, cannot)).toBe(
       "returning",
     );
   });
 
-  it("always lets a driver release, even when driving becomes unavailable", () => {
+  it("always lets a pilot release, even when driving becomes unavailable", () => {
     expect(transition("driving", { type: "RELEASE" }, cannot)).toBe(
       "returning",
     );
+    expect(transition("flying", { type: "LAND" }, cannot)).toBe("returning");
   });
 });

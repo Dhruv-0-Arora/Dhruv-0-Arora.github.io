@@ -63,3 +63,10 @@ Add new entries at the bottom with the date; do not rewrite old ones.
 - **Quads split along the flatter diagonal.** A crest crossing the grid otherwise renders as a staircase of alternating triangles under side light; the ridged noise is also rounded over a few metres for the same reason.
 - **A dev camera lives in the URL.** `?cam=x,y,z&at=x,y,z&fov=n` pins the rig in development only, so any slope can be inspected at any zoom without touching the rails.
 
+## Hub centerpiece, accent and Dozer (2026-09-07)
+
+- **The hub centerpiece is the Flyer, not an orrery.** The orrery read as generic. A 1903 Wright-style biplane at life size hangs over the pad the way the original hangs in the Smithsonian, props idling, and it is the second vehicle: T takes off from the perch. Built from primitives in `flyer/FlyerRig.tsx` so it retints like everything else.
+- **Flight is arcade and pure.** `controls/flightController.ts` is a fixed-step integrator like the drive model: throttle sets speed with a cruise it drifts back to, bank turns, pitch climbs and dives and trades speed, the aircraft levels itself, and past 90% of the flyable radius the nose is bent home so the edge is never a wall. The floor is a polar heightmap of the range (`world/heightGrid.ts`) built once from the loaded vertices, not a per-frame raycast.
+- **The accent is forest green.** `#2f7d4f` by day, `#5fc383` by night, with `on-accent` flipped to suit. Everything authored as `tok.accent` (the hub ring, chevrons, climber jackets, screen strips) follows through the retint; the five data hues, amber included, are unchanged so project colors keep their meaning.
+- **The Dozer drives at 2 m.** Doubled from its real 1.1 m so it reads from the rails; collision radius and chase camera scaled with it.
+- **Project copy carries a `details` list.** Descriptions were rewritten from the local GitHub corpus with one technical fact per line; the panel renders them as a list. Framings stay fixed and are now asserted by tests.
