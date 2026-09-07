@@ -7,9 +7,9 @@ Writes to ``<dir>``:
 
 * ``<district>.glb`` for every district in the contract (Y-up, materials by name,
   no textures, modifiers applied). ``shared.glb`` also carries ``col.ground``.
-* ``meta.json``: the rail polyline, look targets, zones, climbing routes and
-  box colliders, converted to the same Y-up frame as the glbs, plus the
-  drivable bounds (the AABB of ``col.ground``).
+* ``meta.json``: the rail polyline, look targets, zones, climbing routes,
+  hiking trails, lakes and box colliders, converted to the same Y-up frame
+  as the glbs, plus the drivable bounds (the AABB of ``col.ground``).
 * ``lint.json``: the lint report, including per-district triangle counts.
 
 Refuses to export a scene that fails ``lint_scene.py``.
@@ -142,6 +142,7 @@ def build_meta(contract: dict) -> dict:
     looks = []
     zones = []
     routes = []
+    trails = []
     for obj in lint_scene.collection_objects(rails):
         if lint_scene.RAIL_LOOK.match(obj.name):
             position = yup(obj.matrix_world.translation)
@@ -157,9 +158,30 @@ def build_meta(contract: dict) -> dict:
             )
         elif lint_scene.ROUTE_OBJECT.match(obj.name):
             routes.append({"slug": obj.name.split(".", 1)[1], "points": rail_points(obj)})
+        elif lint_scene.TRAIL_OBJECT.match(obj.name):
+            trails.append({"slug": obj.name.split(".", 1)[1], "points": rail_points(obj)})
     looks.sort(key=lambda l: l["t"])
     zones.sort(key=lambda z: z["slug"])
     routes.sort(key=lambda r: r["slug"])
+    trails.sort(key=lambda r: r["slug"])
+
+    # Lakes: flat discs in a district; center and radius in world space.
+    lakes = []
+    for district_col in cols["districts"].values():
+        for obj in lint_scene.collection_objects(root.children[district_col]):
+            m = lint_scene.LAKE_OBJECT.match(obj.name)
+            if m is None or obj.type != "MESH":
+                continue
+            lo, hi = world_aabb(obj)
+            center = obj.matrix_world.translation
+            lakes.append(
+                {
+                    "slug": m.group("slug"),
+                    "center": yup(center),
+                    "radius": round(max(hi[0] - lo[0], hi[2] - lo[2]) / 2, 3),
+                }
+            )
+    lakes.sort(key=lambda l: l["slug"])
 
     boxes = []
     for obj in lint_scene.collection_objects(colliders):
@@ -179,6 +201,8 @@ def build_meta(contract: dict) -> dict:
         "looks": looks,
         "zones": zones,
         "routes": routes,
+        "lakes": lakes,
+        "trails": trails,
         "colliders": boxes,
         "bounds": {"min": lo, "max": hi},
     }
@@ -212,7 +236,8 @@ def main() -> None:
         json.dump(meta, fh, separators=(",", ":"))
     print(
         f"meta: {len(meta['rail']['points'])} rail points, {len(meta['looks'])} looks, "
-        f"{len(meta['zones'])} zones, {len(meta['routes'])} routes, {len(meta['colliders'])} colliders"
+        f"{len(meta['zones'])} zones, {len(meta['routes'])} routes, {len(meta['lakes'])} lakes, "
+        f"{len(meta['trails'])} trails, {len(meta['colliders'])} colliders"
     )
 
 

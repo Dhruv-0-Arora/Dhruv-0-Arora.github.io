@@ -74,6 +74,12 @@ describe.skipIf(!hasBlender)("world pipeline (Blender)", () => {
     expect(meta.looks.map((l) => l.t)).toEqual([0, 1]);
     expect(meta.colliders.map((c) => c.name)).toEqual(["col.box.plinth"]);
     expect(meta.routes).toEqual([]);
+    expect(meta.lakes.map((l) => l.slug)).toEqual(["tarn"]);
+    expect(meta.lakes[0].radius).toBeCloseTo(8, 0);
+    expect(meta.lakes[0].center.map(Math.round)).toEqual([180, 3, -40]);
+    expect(meta.trails.map((t) => [t.slug, t.points.length])).toEqual([
+      ["tarn", 3],
+    ]);
     // Bounds are the drivable ground, not the tallest mesh: the fixture's
     // col.ground is a 400 m plane at z = 0, which in Y-up is y = 0.
     expect(meta.bounds.min.map(Math.round)).toEqual([-200, 0, -200]);

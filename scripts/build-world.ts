@@ -89,7 +89,7 @@ async function main(): Promise<number> {
       `  total        ${(report.totalBytes / 1000).toFixed(0).padStart(6)}KB ${String(report.totalTriangles).padStart(8)} tris`,
     );
     console.log(
-      `  meta         ${meta.rail.points.length} rail points, ${meta.looks.length} looks, ${meta.zones.length} zones, ${meta.routes.length} routes, ${meta.colliders.length} colliders`,
+      `  meta         ${meta.rail.points.length} rail points, ${meta.looks.length} looks, ${meta.zones.length} zones, ${meta.routes.length} routes, ${meta.lakes.length} lakes, ${meta.trails.length} trails, ${meta.colliders.length} colliders`,
     );
     for (const w of report.warnings) console.warn(`  WARN ${w}`);
     for (const e of report.errors) console.error(`  ERROR ${e}`);

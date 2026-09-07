@@ -9,6 +9,9 @@ import {
   createTerrainUniforms,
   patchTerrainMaterial,
 } from "./terrainShader.ts";
+import { TRAIL_MAP, type TrailMask, trailMaskTexture } from "./trailMask.ts";
+
+const ROCK_NAME = "tok.rock";
 
 function toColor(rgb: Rgba, out = new THREE.Color()): THREE.Color {
   return out.setRGB(rgb.r, rgb.g, rgb.b, THREE.SRGBColorSpace);
@@ -39,15 +42,30 @@ export function terrainTargets(palette: Palette): Targets {
 
 interface TerrainProps {
   backdrop: THREE.Object3D;
+  /** Trails and lake shores to paint; null paints none. */
+  mask: TrailMask | null;
 }
 
 /**
  * Attaches the terrain shader to the loaded range and keeps its palette
  * uniforms gliding with the theme, on the same clock as the registry.
  */
-export function Terrain({ backdrop }: TerrainProps) {
+export function Terrain({ backdrop, mask }: TerrainProps) {
   const palette = useSim((s) => s.palette);
   const uniforms = useMemo(() => createTerrainUniforms(), []);
+
+  useEffect(() => {
+    if (!mask) return;
+    const texture = trailMaskTexture(mask);
+    const previous = uniforms.uTrail.value;
+    uniforms.uTrail.value = texture;
+    uniforms.uTrailMap.value.set(TRAIL_MAP.inner, TRAIL_MAP.outer, 1);
+    return () => {
+      uniforms.uTrail.value = previous;
+      uniforms.uTrailMap.value.z = 0;
+      texture.dispose();
+    };
+  }, [mask, uniforms]);
   const lerp = useMemo(
     () => ({
       from: null as Targets | null,
@@ -64,7 +82,7 @@ export function Terrain({ backdrop }: TerrainProps) {
         ? obj.material
         : [obj.material];
       for (const m of materials) {
-        if (m instanceof THREE.MeshStandardMaterial) {
+        if (m instanceof THREE.MeshStandardMaterial && m.name === ROCK_NAME) {
           patchTerrainMaterial(m, uniforms);
         }
       }

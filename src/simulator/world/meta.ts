@@ -26,6 +26,19 @@ export interface RouteMeta {
   points: Vec3[];
 }
 
+/** A lake on the backdrop: a flat disc at the water level, clipped by terrain. */
+export interface LakeMeta {
+  slug: string;
+  center: Vec3;
+  radius: number;
+}
+
+/** A hiking trail on the backdrop: a polyline along a valley floor. */
+export interface TrailMeta {
+  slug: string;
+  points: Vec3[];
+}
+
 export interface BoxColliderMeta {
   name: string;
   min: Vec3;
@@ -38,6 +51,8 @@ export interface WorldMeta {
   looks: LookMeta[];
   zones: ZoneMeta[];
   routes: RouteMeta[];
+  lakes: LakeMeta[];
+  trails: TrailMeta[];
   colliders: BoxColliderMeta[];
   bounds: { min: Vec3; max: Vec3 };
 }
@@ -114,21 +129,23 @@ export function validateWorldMeta(input: unknown): string[] {
     }
   }
 
-  if (!Array.isArray(meta.routes)) {
-    errors.push("routes must be an array");
+  checkPolylines(errors, "route", meta.routes);
+  checkPolylines(errors, "trail", meta.trails);
+
+  if (!Array.isArray(meta.lakes)) {
+    errors.push("lakes must be an array");
   } else {
     const seen = new Set<string>();
-    for (const route of meta.routes) {
-      const slug = String(route.slug);
-      if (typeof route.slug !== "string" || !SLUG.test(route.slug)) {
-        errors.push(`route '${slug}' has a bad slug`);
+    for (const lake of meta.lakes) {
+      const slug = String(lake.slug);
+      if (typeof lake.slug !== "string" || !SLUG.test(lake.slug)) {
+        errors.push(`lake '${slug}' has a bad slug`);
       }
-      if (seen.has(slug)) errors.push(`route '${slug}' is duplicated`);
+      if (seen.has(slug)) errors.push(`lake '${slug}' is duplicated`);
       seen.add(slug);
-      if (!Array.isArray(route.points) || route.points.length < 2) {
-        errors.push(`route '${slug}' needs at least 2 points`);
-      } else if (!route.points.every(isVec3)) {
-        errors.push(`route '${slug}' contains a non-finite point`);
+      if (!isVec3(lake.center)) errors.push(`lake '${slug}' has a bad center`);
+      if (!(typeof lake.radius === "number" && lake.radius > 0)) {
+        errors.push(`lake '${slug}' needs radius > 0`);
       }
     }
   }
@@ -150,6 +167,32 @@ export function validateWorldMeta(input: unknown): string[] {
   }
 
   return errors;
+}
+
+/** Routes and trails share one shape: unique slugs, at least two finite points. */
+function checkPolylines(
+  errors: string[],
+  kind: "route" | "trail",
+  list: unknown,
+): void {
+  if (!Array.isArray(list)) {
+    errors.push(`${kind}s must be an array`);
+    return;
+  }
+  const seen = new Set<string>();
+  for (const line of list as Partial<RouteMeta>[]) {
+    const slug = String(line.slug);
+    if (typeof line.slug !== "string" || !SLUG.test(line.slug)) {
+      errors.push(`${kind} '${slug}' has a bad slug`);
+    }
+    if (seen.has(slug)) errors.push(`${kind} '${slug}' is duplicated`);
+    seen.add(slug);
+    if (!Array.isArray(line.points) || line.points.length < 2) {
+      errors.push(`${kind} '${slug}' needs at least 2 points`);
+    } else if (!line.points.every(isVec3)) {
+      errors.push(`${kind} '${slug}' contains a non-finite point`);
+    }
+  }
 }
 
 export function parseWorldMeta(input: unknown): WorldMeta {

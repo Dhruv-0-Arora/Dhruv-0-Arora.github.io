@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { TERRAIN } from "./terrainField.ts";
+import { TRAIL_MAP } from "./trailMask.ts";
 
 /**
  * The range's surface, painted per pixel. The authored mesh is one
@@ -9,7 +10,9 @@ import { TERRAIN } from "./terrainField.ts";
  * fine bump so rock reads as rock under the sun and the shadow maps.
  *
  * Everything derives from the palette: `diffuse` (rock, kept current by
- * the material registry) plus the snow, forest and meadow uniforms.
+ * the material registry) plus the snow, forest and meadow uniforms. The
+ * trails and lake shores come from a polar mask texture (`trailMask.ts`)
+ * that the range samples with the same mapping the mask was built with.
  */
 
 export interface TerrainUniforms {
@@ -18,6 +21,15 @@ export interface TerrainUniforms {
   uMeadow: { value: THREE.Color };
   uSunDir: { value: THREE.Vector3 };
   uSnowRoughness: { value: number };
+  uTrail: { value: THREE.Texture };
+  /** (inner radius, outer radius, enabled) of the trail mask. */
+  uTrailMap: { value: THREE.Vector3 };
+}
+
+function emptyMask(): THREE.DataTexture {
+  const t = new THREE.DataTexture(new Uint8Array(4), 1, 1);
+  t.needsUpdate = true;
+  return t;
 }
 
 export function createTerrainUniforms(): TerrainUniforms {
@@ -27,6 +39,10 @@ export function createTerrainUniforms(): TerrainUniforms {
     uMeadow: { value: new THREE.Color(0.2, 0.3, 0.1) },
     uSunDir: { value: new THREE.Vector3(0, 1, 0) },
     uSnowRoughness: { value: 0.62 },
+    uTrail: { value: emptyMask() },
+    uTrailMap: {
+      value: new THREE.Vector3(TRAIL_MAP.inner, TRAIL_MAP.outer, 0),
+    },
   };
 }
 
@@ -39,6 +55,8 @@ const common = /* glsl */ `
   uniform vec3 uMeadow;
   uniform vec3 uSunDir;
   uniform float uSnowRoughness;
+  uniform sampler2D uTrail;
+  uniform vec3 uTrailMap;
   varying vec3 vTerrainPos;
   varying vec3 vTerrainNormal;
 
@@ -47,6 +65,17 @@ const common = /* glsl */ `
   float tMeadow = 0.0;
   float tTreeline = 0.0;
   float tSnowline = 0.0;
+  float tTrail = 0.0;
+  float tShore = 0.0;
+  float tTread = 0.0;
+
+  // The mask's polar mapping: theta across (wrapping), rho down.
+  vec2 trailUv(vec3 p) {
+    return vec2(
+      atan(p.z, p.x) / 6.28318530718 + 0.5,
+      (length(p.xz) - uTrailMap.x) / (uTrailMap.y - uTrailMap.x)
+    );
+  }
 
   float thash(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
@@ -79,6 +108,10 @@ const common = /* glsl */ `
   void terrainMasks(vec3 p, vec3 n) {
     vec2 q = p.xz;
     float y = p.y;
+    vec2 trail = uTrailMap.z > 0.5 ? texture2D(uTrail, trailUv(p)).rg : vec2(0.0);
+    tTrail = trail.r;
+    tShore = trail.g;
+    tTread = smoothstep(0.12, 0.7, tTrail);
     tTreeline = ${f(TERRAIN.treeline)} + ${f(TERRAIN.treelineWobble)} * (tfbm(q * ${f(TERRAIN.treelineScale)} + vec2(31.7, -12.3)) * 2.0 - 1.0);
     // Sunward faces melt out, so their snowline sits higher.
     float aspect = dot(n.xz, uSunDir.xz);
@@ -93,8 +126,8 @@ const common = /* glsl */ `
     float gentle = smoothstep(0.42, 0.66, n.y);
     float below = 1.0 - smoothstep(tTreeline - 9.0, tTreeline + 3.0, y);
     float clumps = smoothstep(0.25, 0.65, tfbm(q * 0.045 + vec2(7.1, 3.3)));
-    tForest = below * gentle * (0.35 + 0.65 * clumps) * (1.0 - tSnow);
-    tMeadow = smoothstep(tTreeline - 16.0, tTreeline - 4.0, y) * (1.0 - smoothstep(tTreeline + 4.0, tTreeline + 16.0, y)) * gentle * (1.0 - tSnow);
+    tForest = below * gentle * (0.35 + 0.65 * clumps) * (1.0 - tSnow) * (1.0 - tTread);
+    tMeadow = smoothstep(tTreeline - 16.0, tTreeline - 4.0, y) * (1.0 - smoothstep(tTreeline + 4.0, tTreeline + 16.0, y)) * gentle * (1.0 - tSnow) * (1.0 - tTread);
   }
 
   vec3 terrainAlbedo(vec3 rock, vec3 p, vec3 n) {
@@ -123,6 +156,15 @@ const common = /* glsl */ `
     vec3 meadowCol = uMeadow * (0.88 + 0.24 * tfbm(q * 0.2 + 9.0));
     col = mix(col, meadowCol, tMeadow * (1.0 - tForest));
     col = mix(col, forestCol, tForest);
+    // Trails: a beaten dirt tread, lighter and warmer than the rock, with
+    // the margins trodden a little darker where boots leave the path.
+    float margin = smoothstep(0.03, 0.2, tTrail) * (1.0 - smoothstep(0.2, 0.55, tTrail));
+    vec3 dirt = rock * vec3(1.30, 1.22, 1.08) * (0.9 + 0.2 * grain) * (0.94 + 0.12 * streak);
+    col = mix(col, dirt, tTread);
+    col *= 1.0 - 0.12 * margin;
+    // Lake shores: pale gravel just above the water.
+    vec3 gravel = rock * vec3(1.20, 1.18, 1.12) * (0.92 + 0.16 * grain);
+    col = mix(col, gravel, tShore * (1.0 - tTread) * 0.85);
     // Snow, with the glacier ice below the snowline reading blue.
     // Wind-packed snow is not one white: broad soft drifts, a fine grain.
     float drift = tfbm(q * 0.035 + 21.0);
@@ -141,7 +183,7 @@ const common = /* glsl */ `
     float h0 = tfbm(q * 0.14) + fine * 0.6 * tfbm(q * 0.55);
     float hx = tfbm(qx * 0.14) + fine * 0.6 * tfbm(qx * 0.55);
     float hz = tfbm(qz * 0.14) + fine * 0.6 * tfbm(qz * 0.55);
-    float amt = mix(4.5, 1.0, tSnow) * (1.0 - 0.6 * tForest);
+    float amt = mix(4.5, 1.0, tSnow) * (1.0 - 0.6 * tForest) * (1.0 - 0.7 * tTread);
     return normalize(n - vec3(hx - h0, 0.0, hz - h0) * amt);
   }
 `;

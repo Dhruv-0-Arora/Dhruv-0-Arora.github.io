@@ -105,6 +105,7 @@ PREVIEW = {
     "tok.rock": "#807d78",
     "tok.snow": "#f2f4f7",
     "tok.forest": "#3d6b4d",
+    "tok.water": "#4a8ea8",
     "ramp.importance.1": "#6b7280",
     "ramp.importance.2": "#0076c5",
     "ramp.importance.3": "#0284c7",

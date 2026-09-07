@@ -1,7 +1,7 @@
-"""Session 06: the mountain backdrop and its climbing routes.
+"""Session 06: the mountain backdrop, its climbing routes, lakes and trails.
 
-Replaces ``World/Backdrop`` and every ``route.*`` curve on top of the earlier
-sessions:
+Replaces ``World/Backdrop`` and every ``route.*`` and ``trail.*`` curve on
+top of the earlier sessions:
 
     blender --background --python-exit-code 1 assets/blender/world.blend \
         --python assets/blender/scripts/sessions/06_backdrop.py -- \
@@ -21,11 +21,21 @@ aspect (``src/simulator/world/terrain``), so the authored geometry only has
 to get the shape right. Three routes, snapped onto the surface, are
 exported for the runtime climbers.
 
+Two lakes sit in the lowest saddles of the range, one each side of Rainier:
+a basin is carved into the height field and a flat ``tok.water`` disc at the
+water level is clipped by the terrain rising through it, which is what
+draws the shoreline. A hiking trail leads to each lake from the foot of the
+range, skirts the shore and drops over the saddle beyond. The trails are
+routed by A* over the carved height field with a grade penalty, so they
+follow the valley floors and switchback where the ground is steep; the
+runtime paints them onto the terrain from ``meta.trails``.
+
 Everything is seeded, so the range is the same on every run.
 """
 
 from __future__ import annotations
 
+import heapq
 import math
 import os
 import random
@@ -64,6 +74,29 @@ PEAKS = [
     ("filler-d", -95.0, 300.0, 35.0, 46.0, 30.0, 0, None),
 ]
 ROUTES = ["rainier", "adams", "baker"]
+
+# (slug, theta deg, rho, basin radius): the two lowest saddles of the range,
+# found by sampling the relief between the peaks. Mowich lies between Baker
+# and Rainier's eastern skirt, Tipsoo between Stuart and Adams. Named after
+# the lakes on Rainier's flanks.
+LAKES = [
+    ("mowich", 51.0, 328.0, 28.0),
+    ("tipsoo", 137.0, 338.0, 24.0),
+]
+LAKE_DISC = 1.15  # water disc radius over the basin radius
+LAKE_DEPTH = 2.5  # basin floor under the water level at the basin edge
+LAKE_MARGIN = 4.0  # water level over the lowest ground found in the basin
+
+# (slug, start theta deg, end theta deg, end rho): each trail climbs from the
+# foot of the range at ``start theta`` to the lake with the same slug, rounds
+# the shore and drops over the saddle to (end theta, end rho).
+TRAILS = [
+    ("mowich", 70.0, 48.0, 392.0),
+    ("tipsoo", 112.0, 134.0, 392.0),
+]
+TRAIL_CELL = 2.5
+TRAIL_STEP = 2.0
+TRAIL_LIFT = 0.25
 
 
 def smoothstep(a: float, b: float, x: float) -> float:
@@ -163,8 +196,9 @@ def peak_height(p, x: float, y: float) -> float:
     return h
 
 
-def height(x: float, y: float, u: float) -> float:
-    """Terrain height at (x, y); u is the ring fraction from inner (0) to outer (1)."""
+def relief(x: float, y: float, u: float) -> float:
+    """Terrain height at (x, y) before the lake basins; u is the ring fraction
+    from inner (0) to outer (1)."""
     edge = smoothstep(0.0, 0.3, u) * (1.0 - smoothstep(0.84, 1.0, u) * 0.85)
     xw, yw = warp(x, y)
     h = 3.0 * smoothstep(0.0, 0.25, u)
@@ -181,6 +215,81 @@ def height(x: float, y: float, u: float) -> float:
     h += 8.0 * fbm(xw * 0.018, yw * 0.018, 4) * smoothstep(0.05, 0.4, u)
     h += 3.0 * ridged(xw * 0.05, yw * 0.05, 3) * smoothstep(0.1, 0.5, u)
     return max(0.0, h * edge)
+
+
+def ring_u(x: float, y: float) -> float:
+    """Ring fraction of a point: 0 at the plate's edge, 1 at the outer rim."""
+    ri = r_inner(math.atan2(y, x))
+    return (math.hypot(x, y) - ri) / (OUTER - ri)
+
+
+def relief_at(x: float, y: float) -> float:
+    return relief(x, y, ring_u(x, y))
+
+
+def lake_center(lake) -> Vector:
+    return peak_center(lake[1], lake[2])
+
+
+def lake_level(lake) -> float:
+    """Water level: the lowest relief inside the basin plus a margin, so the
+    basin floor is always carved, never filled."""
+    c = lake_center(lake)
+    radius = lake[3]
+    lowest = relief_at(c.x, c.y)
+    for i in range(24):
+        a = i / 24 * math.tau
+        lowest = min(lowest, relief_at(c.x + 0.8 * radius * math.cos(a), c.y + 0.8 * radius * math.sin(a)))
+    return round(lowest + LAKE_MARGIN, 2)
+
+
+LEVELS = {lake[0]: lake_level(lake) for lake in LAKES}
+
+
+def lake_dn(lake, x: float, y: float) -> float | None:
+    """Distance from the lake center over the basin radius, wobbled by a
+    little noise so the shoreline is not a circle. None when far away."""
+    c = lake_center(lake)
+    d = math.hypot(x - c.x, y - c.y)
+    if d > 2.5 * lake[3]:
+        return None
+    # The wobble only shrinks the basin, so the water disc always covers it.
+    seed = 7.0 * LAKES.index(lake)
+    wobble = 1.0 + 0.11 * (1.0 + fbm(x * 0.022 + seed, y * 0.022 - seed, 2))
+    wobble += 0.04 * (1.0 + fbm(x * 0.07 - seed, y * 0.07 + seed, 2))
+    return d * wobble / lake[3]
+
+
+def basin(lake, x: float, y: float, h: float) -> float:
+    """Carve one lake into the relief: a bowl under the water level inside
+    the basin, a bank rising through the level just outside it (that is the
+    shoreline), and a low moraine lip so nothing nearby sits under water,
+    fading back into the natural ground beyond."""
+    dn = lake_dn(lake, x, y)
+    if dn is None:
+        return h
+    level = LEVELS[lake[0]]
+    if dn < 1.0:
+        return min(h, level - LAKE_DEPTH - 2.0 * (1.0 - dn * dn))
+    floor = level - LAKE_DEPTH + (LAKE_DEPTH + 0.8) * smoothstep(1.0, LAKE_DISC, dn)
+    floor += 0.5 * smoothstep(LAKE_DISC, 1.5, dn) * (1.0 - smoothstep(1.7, 2.3, dn))
+    # The headwall on the uphill side may climb steeply, but not as a cliff.
+    cap = level - LAKE_DEPTH + 18.0 * smoothstep(1.0, 1.25, dn) + 80.0 * smoothstep(1.25, 1.8, dn)
+    weight = 1.0 - smoothstep(1.7, 2.4, dn)
+    target = min(max(h, floor), cap)
+    return h + (target - h) * weight
+
+
+def height(x: float, y: float, u: float) -> float:
+    """Terrain height at (x, y) with the lake basins carved in."""
+    h = relief(x, y, u)
+    for lake in LAKES:
+        h = basin(lake, x, y, h)
+    return h
+
+
+def height_at(x: float, y: float) -> float:
+    return height(x, y, ring_u(x, y))
 
 
 def build_range(w: World) -> bpy.types.Object:
@@ -255,9 +364,181 @@ def build_routes(w: World, ring: bpy.types.Object, rng: random.Random) -> None:
         w.rails.objects.link(obj)
 
 
+def build_lakes(w: World) -> None:
+    """A flat disc at each water level; the terrain rising through it draws
+    the shore. Exported as ``backdrop.lake.<slug>`` so the runtime finds the
+    center, level and radius in meta."""
+    col = w.by_district["backdrop"]
+    for lake in LAKES:
+        c = lake_center(lake)
+        bm = bmesh.new()
+        bmesh.ops.create_circle(bm, cap_ends=True, radius=lake[3] * LAKE_DISC, segments=64)
+        for face in bm.faces:
+            face.smooth = True
+        mesh = bpy.data.meshes.new(f"backdrop.lake.{lake[0]}")
+        bm.to_mesh(mesh)
+        bm.free()
+        obj = bpy.data.objects.new(f"backdrop.lake.{lake[0]}", mesh)
+        obj.location = (c.x, c.y, LEVELS[lake[0]])
+        w._add(obj, col, "tok.water", False)
+
+
+def trail_blocked(x: float, y: float) -> bool:
+    if ring_u(x, y) < 0.005:
+        return True
+    return any((dn := lake_dn(lake, x, y)) is not None and dn < 1.28 for lake in LAKES)
+
+
+def step_factor(x: float, y: float) -> float:
+    """Cost multiplier of the ground itself: cheaper along a shore so the
+    trail hugs it, dearer along the plate's edge so it climbs away from
+    the foot instead of skimming it, and a little noise everywhere so a
+    flat valley floor gives a wandering path instead of a surveyor's line."""
+    factor = 1.0 + 0.7 * (0.5 + 0.5 * fbm(x * 0.05 + 2.0, y * 0.05 - 1.0, 2))
+    factor += 3.0 * (1.0 - smoothstep(0.0, 0.12, ring_u(x, y)))
+    for lake in LAKES:
+        dn = lake_dn(lake, x, y)
+        if dn is not None and dn < 1.6:
+            return 0.65 * factor
+    return factor
+
+
+STEPS = [(1, 0), (0, 1), (-1, 0), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1),
+         (2, 1), (1, 2), (-1, 2), (-2, 1), (-2, -1), (-1, -2), (1, -2), (2, -1)]
+STEP_DIRS = [Vector((di, dj, 0.0)).normalized() for di, dj in STEPS]
+
+
+def astar(start: Vector, goal: Vector, origin: Vector, size: tuple[int, int], cells: dict, heading: int = -1) -> tuple[list[Vector], int]:
+    """Least-cost path on a grid over the carved relief. A step costs its
+    length times a grade penalty plus a penalty for turning, so the path
+    threads the valley floor and crosses steep ground in long traverses
+    joined by real switchbacks instead of a sawtooth. ``heading`` is the
+    step index the path arrives with, so consecutive legs join smoothly;
+    the path and its final heading are returned."""
+
+    def cell(v: Vector) -> tuple[int, int]:
+        return (round((v.x - origin.x) / TRAIL_CELL), round((v.y - origin.y) / TRAIL_CELL))
+
+    def sample(i: int, j: int):
+        key = (i, j)
+        if key not in cells:
+            x, y = origin.x + i * TRAIL_CELL, origin.y + j * TRAIL_CELL
+            cells[key] = (x, y, height_at(x, y), trail_blocked(x, y), step_factor(x, y))
+        return cells[key]
+
+    s, g = cell(start), cell(goal)
+    gx, gy = origin.x + g[0] * TRAIL_CELL, origin.y + g[1] * TRAIL_CELL
+    best = {(s, heading): 0.0}
+    came: dict = {}
+    frontier = [(0.0, s, heading)]
+    done = None
+    while frontier:
+        f, cur, d = heapq.heappop(frontier)
+        if cur == g:
+            done = (cur, d)
+            break
+        cx, cy, cz, _blocked, _bonus = sample(*cur)
+        if f > best[(cur, d)] + 0.65 * math.hypot(cx - gx, cy - gy) + 1e-6:
+            continue
+        for k, (di, dj) in enumerate(STEPS):
+            nxt = (cur[0] + di, cur[1] + dj)
+            if not (0 <= nxt[0] < size[0] and 0 <= nxt[1] < size[1]):
+                continue
+            nx, ny, nz, blocked, bonus = sample(*nxt)
+            if blocked and nxt != g:
+                continue
+            length = math.hypot(nx - cx, ny - cy)
+            grade = abs(nz - cz) / length
+            cost = length * (1.0 + 16.0 * grade * grade) * bonus
+            if grade > 0.5:
+                cost *= 6.0
+            if d >= 0:
+                cost += 8.0 * (1.0 - STEP_DIRS[d].dot(STEP_DIRS[k]))
+            tentative = best[(cur, d)] + cost
+            key = (nxt, k)
+            if tentative < best.get(key, float("inf")):
+                best[key] = tentative
+                came[key] = (cur, d)
+                heapq.heappush(frontier, (tentative + 0.65 * math.hypot(nx - gx, ny - gy), nxt, k))
+    if done is None:
+        raise RuntimeError(f"trail: no path from {tuple(start)} to {tuple(goal)}")
+    path = [done]
+    while path[-1] != (s, heading):
+        path.append(came[path[-1]])
+    path.reverse()
+    return [Vector((origin.x + i * TRAIL_CELL, origin.y + j * TRAIL_CELL, 0.0)) for (i, j), _d in path], done[1]
+
+
+def chaikin(points: list[Vector], passes: int = 3) -> list[Vector]:
+    for _ in range(passes):
+        out = [points[0]]
+        for a, b in zip(points, points[1:]):
+            out.append(a.lerp(b, 0.25))
+            out.append(a.lerp(b, 0.75))
+        out.append(points[-1])
+        points = out
+    return points
+
+
+def resample(points: list[Vector], step: float) -> list[Vector]:
+    out = [points[0]]
+    carry = 0.0
+    for a, b in zip(points, points[1:]):
+        seg = (b - a).length
+        if seg == 0:
+            continue
+        t = (step - carry) / seg
+        while t <= 1.0:
+            out.append(a.lerp(b, t))
+            t += step / seg
+        carry = (1.0 - (t - step / seg)) * seg
+    if (out[-1] - points[-1]).length > step * 0.5:
+        out.append(points[-1])
+    return out
+
+
+def build_trails(w: World, ring: bpy.types.Object) -> None:
+    """Route each trail from the foot of the range over the saddle beyond
+    its lake, smooth it, and snap it onto the finished mesh. The water is
+    impassable and the shore is cheap, so the path rounds the lake along
+    the bank on whichever side the ground favours."""
+    bpy.context.view_layer.update()
+    for slug, start_theta, end_theta, end_rho in TRAILS:
+        lake = next(l for l in LAKES if l[0] == slug)
+        c = lake_center(lake)
+        a = math.radians(start_theta)
+        foot = Vector((math.cos(a), math.sin(a), 0.0)) * (r_inner(a) + 6.0)
+        end = peak_center(end_theta, end_rho)
+        waypoints = [foot, end]
+        lo = Vector((min(p.x for p in waypoints) - 50.0, min(p.y for p in waypoints) - 50.0, 0.0))
+        hi = Vector((max(p.x for p in waypoints) + 50.0, max(p.y for p in waypoints) + 50.0, 0.0))
+        size = (int((hi.x - lo.x) / TRAIL_CELL) + 1, int((hi.y - lo.y) / TRAIL_CELL) + 1)
+        cells: dict = {}
+        path: list[Vector] = []
+        heading = -1
+        for p, q in zip(waypoints, waypoints[1:]):
+            leg, heading = astar(p, q, lo, size, cells, heading)
+            path.extend(leg if not path else leg[1:])
+        points = resample(chaikin(path), TRAIL_STEP)
+        snapped = []
+        for p in points:
+            hit, loc, _normal, _index = ring.ray_cast(Vector((p.x, p.y, 600.0)), Vector((0.0, 0.0, -1.0)))
+            z = loc.z if hit else height_at(p.x, p.y)
+            snapped.append((p.x, p.y, z + TRAIL_LIFT))
+        curve = bpy.data.curves.new(f"trail.{slug}", type="CURVE")
+        curve.dimensions = "3D"
+        spline = curve.splines.new("POLY")
+        spline.points.add(len(snapped) - 1)
+        for point, (x, y, z) in zip(spline.points, snapped):
+            point.co = (x, y, z, 1.0)
+        obj = bpy.data.objects.new(f"trail.{slug}", curve)
+        w.rails.objects.link(obj)
+        print(f"trail.{slug}: {len(snapped)} points, {len(cells)} cells searched")
+
+
 def wipe_routes(w: World) -> None:
     for obj in list(w.rails.objects):
-        if obj.name.startswith("route."):
+        if obj.name.startswith(("route.", "trail.")):
             bpy.data.objects.remove(obj, do_unlink=True)
     purge_orphans()
 
@@ -270,11 +551,20 @@ def main() -> World:
     wipe_routes(w)
     ring = build_range(w)
     build_routes(w, ring, rng)
+    build_lakes(w)
+    build_trails(w, ring)
     w.rebuild_ground()
     w.camera("cam.review.backdrop-hub", (0.0, -60.0, 20.0), (0.0, 300.0, 90.0), lens=28.0)
     adams = peak_center(PEAKS[1][1], PEAKS[1][2])
     w.camera("cam.review.backdrop-adams", (0.0, 0.0, 30.0), (adams.x, adams.y, 80.0), lens=40.0)
     w.camera("cam.review.backdrop-overview", (0.0, -900.0, 520.0), (0.0, 0.0, 40.0), lens=30.0)
+    for lake in LAKES:
+        c = lake_center(lake)
+        level = LEVELS[lake[0]]
+        toward_hub = (HUB - c).normalized()
+        eye = c + toward_hub * 150.0
+        w.camera(f"cam.review.backdrop-lake-{lake[0]}", (eye.x, eye.y, level + 45.0), (c.x, c.y, level), lens=45.0)
+        w.camera(f"cam.review.backdrop-lake-{lake[0]}-top", (c.x, c.y + 0.01, level + 260.0), (c.x, c.y, level), lens=35.0)
     return w
 
 

@@ -23,9 +23,13 @@ interface Tree {
  * proportion to its area and the terrain field's forest weight at its
  * center, at random barycentric points, so the trees stand exactly where
  * the shader paints forest floor. Seeded, so the forest is the same on
- * every visit.
+ * every visit. `exclude` vetoes a spot (a trail, a lake) after the random
+ * draw, so the rest of the forest does not shift when it changes.
  */
-export function scatterTrees(backdrop: THREE.Object3D): Tree[] {
+export function scatterTrees(
+  backdrop: THREE.Object3D,
+  exclude?: (x: number, z: number) => boolean,
+): Tree[] {
   let s = 61;
   const rand = () => {
     s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
@@ -71,13 +75,15 @@ export function scatterTrees(backdrop: THREE.Object3D): Tree[] {
           u = 1 - u;
           v = 1 - v;
         }
-        trees.push({
+        const tree = {
           x: a.x + ab.x * u + ac.x * v,
           y: a.y + ab.y * u + ac.y * v,
           z: a.z + ab.z * u + ac.z * v,
           scale: 0.7 + rand() * 0.6,
           shade: rand(),
-        });
+        };
+        if (exclude?.(tree.x, tree.z)) continue;
+        trees.push(tree);
       }
     }
   });
@@ -101,13 +107,18 @@ function treeGeometry(): THREE.BufferGeometry {
 
 interface ConifersProps {
   backdrop: THREE.Object3D;
+  /** Where no tree may stand, such as on a trail or in a lake. */
+  exclude?: (x: number, z: number) => boolean;
   onMount?: (group: THREE.Group, center: THREE.Vector3) => void;
 }
 
 /** The forest on the lower slopes: one instanced draw call of low cones. */
-export function Conifers({ backdrop, onMount }: ConifersProps) {
+export function Conifers({ backdrop, exclude, onMount }: ConifersProps) {
   const palette = useSim((s) => s.palette);
-  const trees = useMemo(() => scatterTrees(backdrop), [backdrop]);
+  const trees = useMemo(
+    () => scatterTrees(backdrop, exclude),
+    [backdrop, exclude],
+  );
 
   const mesh = useMemo(() => {
     const m = new THREE.InstancedMesh(

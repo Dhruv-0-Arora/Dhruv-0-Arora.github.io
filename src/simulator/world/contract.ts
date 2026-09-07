@@ -63,6 +63,7 @@ export const TOKENS = [
   "rock",
   "snow",
   "forest",
+  "water",
 ] as const;
 
 export type District = (typeof DISTRICTS)[number];

@@ -44,7 +44,8 @@
       "hue-amber-soft",
       "rock",
       "snow",
-      "forest"
+      "forest",
+      "water"
     ],
     "ramps": { "importance": 5 },
     "gradients": ["dirnt"]

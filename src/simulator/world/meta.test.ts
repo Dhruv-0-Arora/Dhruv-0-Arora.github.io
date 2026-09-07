@@ -31,6 +31,16 @@ function validMeta(): WorldMeta {
         ],
       },
     ],
+    lakes: [{ slug: "tarn", center: [280, 60, -40], radius: 26 }],
+    trails: [
+      {
+        slug: "tarn",
+        points: [
+          [212, 4, -10],
+          [280, 58, -30],
+        ],
+      },
+    ],
     colliders: [{ name: "col.box.plinth", min: [-1, 0, -1], max: [1, 2, 1] }],
     bounds: { min: [-200, 0, -200], max: [200, 50, 200] },
   };
@@ -122,6 +132,52 @@ describe("validateWorldMeta", () => {
     expect(errors).toContain("route 'rainier' is duplicated");
     expect(errors).toContain("route 'rainier' contains a non-finite point");
     expect(errors).toContain("route 'Mt Adams' has a bad slug");
+  });
+
+  it("accepts a world without lakes or trails", () => {
+    const meta = validMeta();
+    meta.lakes = [];
+    meta.trails = [];
+    expect(validateWorldMeta(meta)).toEqual([]);
+  });
+
+  it("checks trails like routes", () => {
+    const meta = validMeta();
+    meta.trails = [
+      { slug: "tarn", points: [[0, 0, 0]] },
+      {
+        slug: "tarn",
+        points: [
+          [0, 0, 0],
+          [1, 1, 1],
+        ],
+      },
+      {
+        slug: "Big Lake",
+        points: [
+          [0, 0, 0],
+          [1, 1, 1],
+        ],
+      },
+    ];
+    const errors = validateWorldMeta(meta);
+    expect(errors).toContain("trail 'tarn' needs at least 2 points");
+    expect(errors).toContain("trail 'tarn' is duplicated");
+    expect(errors).toContain("trail 'Big Lake' has a bad slug");
+  });
+
+  it("requires lakes to have unique slugs, a finite center and a radius", () => {
+    const meta = validMeta();
+    meta.lakes = [
+      { slug: "tarn", center: [0, Number.NaN, 0], radius: 10 },
+      { slug: "tarn", center: [0, 0, 0], radius: 0 },
+    ];
+    const errors = validateWorldMeta(meta);
+    expect(errors).toContain("lake 'tarn' has a bad center");
+    expect(errors).toContain("lake 'tarn' is duplicated");
+    expect(errors).toContain("lake 'tarn' needs radius > 0");
+    (meta as { lakes: unknown }).lakes = undefined;
+    expect(validateWorldMeta(meta)).toContain("lakes must be an array");
   });
 
   it("rejects inverted collider boxes", () => {

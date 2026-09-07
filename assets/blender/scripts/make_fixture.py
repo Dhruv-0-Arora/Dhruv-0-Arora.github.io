@@ -79,6 +79,7 @@ def build(contract: dict) -> None:
     accent = material("tok.accent", (0.9, 0.4, 0.1))
     bg = material("tok.bg", (0.98, 0.98, 0.97))
     ramp3 = material("ramp.importance.3", (0.0, 0.7, 0.8))
+    water = material("tok.water", (0.3, 0.55, 0.65))
 
     # One plinth per district, spread along +X so bounds are non-trivial.
     for i, (district, col_name) in enumerate(cols["districts"].items()):
@@ -87,6 +88,21 @@ def build(contract: dict) -> None:
         cube(f"{district}.plinth.trim", (x, 0.0, 2.5), (11.0, 11.0, 0.5), accent, sub[col_name])
         if district == "terminal":
             cube("terminal.astute.node.001", (x, 6.0, 4.0), (1.0, 1.0, 1.0), ramp3, sub[col_name])
+
+    # A lake disc in the backdrop and the trail that leads to it.
+    bpy.ops.mesh.primitive_cylinder_add(vertices=16, radius=8.0, depth=0.1, location=(180.0, 40.0, 3.0))
+    lake = bpy.context.active_object
+    lake.name = "backdrop.lake.tarn"
+    lake.data.materials.append(water)
+    link(lake, sub[cols["districts"]["backdrop"]])
+    trail = bpy.data.curves.new("trail.tarn", type="CURVE")
+    trail.dimensions = "3D"
+    spline = trail.splines.new("POLY")
+    spline.points.add(2)
+    for point, (x, y, z) in zip(spline.points, [(150.0, 20.0, 1.0), (165.0, 30.0, 2.0), (172.0, 40.0, 3.0)]):
+        point.co = (x, y, z, 1.0)
+    trail_obj = bpy.data.objects.new("trail.tarn", trail)
+    sub[cols["rails"]].objects.link(trail_obj)
 
     # Ground collider: a large plane.
     bpy.ops.mesh.primitive_plane_add(size=400.0, location=(0.0, 0.0, 0.0))

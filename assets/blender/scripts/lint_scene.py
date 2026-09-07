@@ -75,6 +75,11 @@ RAIL_PATH = re.compile(r"^rail\.path$")
 RAIL_LOOK = re.compile(r"^rail\.look\.\d{2}$")
 ZONE_OBJECT = re.compile(rf"^zone\.(?P<slug>{SLUG})$")
 ROUTE_OBJECT = re.compile(rf"^route\.(?P<slug>{SLUG})$")
+TRAIL_OBJECT = re.compile(rf"^trail\.(?P<slug>{SLUG})$")
+# Lakes are district meshes with the installation name 'lake'; the runtime
+# reads their center and radius from meta and paints the water surface.
+LAKE_OBJECT = re.compile(rf"^(?P<district>{SLUG})\.lake\.(?P<slug>{SLUG})$")
+LAKE_MATERIAL = "tok.water"
 
 
 def material_pattern(contract: dict) -> re.Pattern[str]:
@@ -169,6 +174,12 @@ def lint(scene: bpy.types.Scene | None = None, contract: dict | None = None) -> 
                 continue
             if m.group("district") != district:
                 report.error(f"'{obj.name}' is in {col_name} but is prefixed '{m.group('district')}.'")
+            if m.group("installation") == "lake":
+                lake = LAKE_OBJECT.match(obj.name)
+                if lake is None or obj.type != "MESH":
+                    report.error(f"'{obj.name}': lakes are meshes named '<district>.lake.<slug>'")
+                elif any(mat is None or mat.name != LAKE_MATERIAL for mat in obj.data.materials):
+                    report.error(f"'{obj.name}' must use only '{LAKE_MATERIAL}'")
             tris = triangle_count(obj, depsgraph)
             total += tris
             key = f"{district}.{m.group('installation')}"
@@ -225,8 +236,9 @@ def lint(scene: bpy.types.Scene | None = None, contract: dict | None = None) -> 
                 radius = obj.get("radius")
                 if not isinstance(radius, (int, float)) or float(radius) <= 0:
                     report.error(f"'{obj.name}' needs a custom property 'radius' > 0")
-            elif ROUTE_OBJECT.match(obj.name):
-                # Climbing routes: polylines the runtime climbers follow.
+            elif ROUTE_OBJECT.match(obj.name) or TRAIL_OBJECT.match(obj.name):
+                # Climbing routes and hiking trails: polylines the runtime
+                # follows (climbers) or paints onto the terrain (trails).
                 if obj.type != "CURVE":
                     report.error(f"'{obj.name}' must be a CURVE")
                 elif len(obj.data.splines) != 1:
@@ -235,7 +247,7 @@ def lint(scene: bpy.types.Scene | None = None, contract: dict | None = None) -> 
                     report.error(f"'{obj.name}' needs at least two points")
             else:
                 report.error(
-                    f"'{obj.name}' in {cols['rails']}: expected 'rail.path', 'rail.look.NN', 'zone.<slug>' or 'route.<slug>'"
+                    f"'{obj.name}' in {cols['rails']}: expected 'rail.path', 'rail.look.NN', 'zone.<slug>', 'route.<slug>' or 'trail.<slug>'"
                 )
 
     for name in contract["requiredObjects"]:
