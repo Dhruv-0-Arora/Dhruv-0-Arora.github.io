@@ -2,10 +2,11 @@ import { useEffect, useId } from "react";
 import { guide } from "../../content/guide";
 import { projects } from "../../content/projects";
 import type { Project } from "../../content/types";
-import { type Hue, hueVar } from "../../lib/hues";
+import type { Hue } from "../../lib/hues";
 import { useSim } from "../simStore.ts";
-import type { ZoneSlug } from "../world/contract.ts";
+import { ZONE_SLUGS, type ZoneSlug } from "../world/contract.ts";
 import { panel, usePanelState } from "./panelState.ts";
+import { WINDOWS, windowName, ZONE_DISTRICT } from "./zoneDistrict.ts";
 
 /** Zone slug to catalog entry; the hub has none and shows the guide. */
 export function projectForZone(slug: ZoneSlug): Project | undefined {
@@ -15,86 +16,31 @@ export function projectForZone(slug: ZoneSlug): Project | undefined {
   );
 }
 
-const glass =
-  "border border-border bg-surface/65 shadow-lg backdrop-blur-2xl backdrop-saturate-150";
-const glassHighlight = {
-  boxShadow:
-    "inset 0 1px 0 rgb(255 255 255 / 0.35), 0 20px 50px -20px rgb(0 0 0 / 0.35)",
+/** Project hues rendered in the terminal palette rather than the page's. */
+const TERM_HUE: Record<Hue, string> = {
+  green: "var(--t-green)",
+  sky: "var(--t-blue)",
+  violet: "var(--t-purple)",
+  rose: "var(--t-red)",
+  amber: "var(--t-orange)",
 };
 
-function Keycap({ label }: { label: string }) {
-  return (
-    <kbd className="inline-flex min-w-7 items-center justify-center rounded-md border border-border bg-surface px-2 py-1 font-mono text-[13px] text-text shadow-[0_1px_0_var(--c-border)]">
-      {label}
-    </kbd>
-  );
+export function termHue(hue?: Hue): string {
+  return hue ? TERM_HUE[hue] : "var(--t-green)";
 }
 
-function Chip({ label }: { label: string }) {
-  return (
-    <span className="rounded-md border border-border bg-surface/80 px-2 py-1 font-mono text-[13px] text-muted">
-      {label}
-    </span>
-  );
+const PROJECT_ZONES = ZONE_SLUGS.filter((z) => z !== "hub");
+
+function hostOf(url: string): string {
+  return url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
 }
 
-function Pill({ href, label }: { href: string; label: string }) {
+function Link({ href }: { href: string }) {
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      className="inline-flex items-center gap-2 rounded-full border border-border bg-surface/80 px-4 py-2 font-mono text-[13px] text-text transition-colors hover:border-accent hover:text-accent"
-    >
-      {label}
-      <svg
-        width="12"
-        height="12"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <path d="M7 17 17 7M8 7h9v9" />
-      </svg>
+    <a href={href} target="_blank" rel="noreferrer">
+      {hostOf(href)}
+      <span aria-hidden="true"> ↗</span>
     </a>
-  );
-}
-
-function CollapseButton({
-  collapsed,
-  controls,
-}: {
-  collapsed: boolean;
-  controls: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => panel.dispatch({ type: "toggle" })}
-      aria-expanded={!collapsed}
-      aria-controls={controls}
-      aria-label={collapsed ? "Expand project panel" : "Collapse project panel"}
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border text-muted transition-colors hover:border-accent hover:text-accent"
-    >
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-        className={collapsed ? "rotate-180" : ""}
-      >
-        <path d="M15 6l-6 6 6 6" />
-      </svg>
-    </button>
   );
 }
 
@@ -107,87 +53,113 @@ function GuideBody({ hasKeyboard }: { hasKeyboard: boolean }) {
     : guide.steps.filter((s) => !s.keys.some((k) => DRIVING_KEYS.has(k)));
   return (
     <>
-      <p className="mt-4 text-[17px] leading-relaxed text-muted">
-        {guide.intro}
-      </p>
-      <ol className="mt-6 space-y-3.5">
+      <h2 className="term-h1">{guide.title}</h2>
+      <p className="term-p">{guide.intro}</p>
+      <h3 className="term-h2">## keys</h3>
+      <dl className="term-keys">
         {steps.map((step) => (
-          <li key={step.text} className="flex items-start gap-4">
-            <span className="flex shrink-0 flex-wrap gap-1 pt-0.5">
-              {step.keys.map((k) => (
-                <Keycap key={k} label={k} />
-              ))}
-            </span>
-            <span className="text-[17px] leading-relaxed">{step.text}</span>
-          </li>
+          <div key={step.text} className="contents">
+            <dt className="term-key">{step.keys.join(" ")}</dt>
+            <dd>{step.text}</dd>
+          </div>
         ))}
-      </ol>
-      <p className="mt-6 text-[15px] leading-relaxed text-muted">
-        {guide.outro}
-      </p>
+      </dl>
+      <p className="term-p term-muted">{guide.outro}</p>
     </>
   );
 }
 
-function ProjectBody({ project, hue }: { project: Project; hue?: Hue }) {
+function ProjectBody({ project, hue }: { project: Project; hue: string }) {
   return (
     <>
-      <p className="mt-3 text-[18px] leading-relaxed">{project.tagline}</p>
+      <h2 className="term-h1" style={{ color: hue }}>
+        {project.name}
+      </h2>
+      <p className="term-p">{project.tagline}</p>
       {project.highlight ? (
-        <p className="mt-6">
-          <span
-            className="font-display text-[34px] leading-none font-semibold tracking-tight"
-            style={{ color: hueVar(hue) }}
-          >
-            {project.highlight}
-          </span>
+        <p className="term-quote" style={{ borderColor: hue }}>
+          {project.highlight}
         </p>
       ) : null}
       {project.description ? (
-        <p className="mt-5 text-[17px] leading-relaxed text-muted">
-          {project.description}
-        </p>
+        <p className="term-p">{project.description}</p>
       ) : null}
       {project.details && project.details.length > 0 ? (
-        <ul className="mt-5 space-y-2.5 border-l-2 border-border pl-4">
-          {project.details.map((line) => (
-            <li key={line} className="text-[15px] leading-relaxed text-muted">
-              {line}
-            </li>
-          ))}
-        </ul>
+        <>
+          <h3 className="term-h2" style={{ color: hue }}>
+            ## details
+          </h3>
+          <ul className="term-list">
+            {project.details.map((line) => (
+              <li key={line}>
+                <span className="term-dash" aria-hidden="true">
+                  -
+                </span>
+                <span>{line}</span>
+              </li>
+            ))}
+          </ul>
+        </>
       ) : null}
-      <div className="mt-6 flex flex-wrap gap-2">
+      <h3 className="term-h2" style={{ color: hue }}>
+        ## stack
+      </h3>
+      <p className="term-stack">
         {project.tech.map((t) => (
-          <Chip key={t} label={t} />
+          <span key={t}>{t}</span>
         ))}
-      </div>
+      </p>
       {project.repo || project.demo ? (
-        <div className="mt-6 flex flex-wrap gap-2">
+        <dl className="term-links">
           {project.repo ? (
-            <Pill
-              href={project.repo}
-              label={project.repo.replace(/^https?:\/\/(www\.)?/, "")}
-            />
+            <>
+              <dt>repo</dt>
+              <dd>
+                <Link href={project.repo} />
+              </dd>
+            </>
           ) : null}
           {project.demo ? (
-            <Pill
-              href={project.demo}
-              label={project.demo.replace(/^https?:\/\/(www\.)?/, "")}
-            />
+            <>
+              <dt>demo</dt>
+              <dd>
+                <Link href={project.demo} />
+              </dd>
+            </>
           ) : null}
-        </div>
+        </dl>
       ) : null}
     </>
+  );
+}
+
+function StatusLine({ zone }: { zone: ZoneSlug }) {
+  const district = ZONE_DISTRICT[zone];
+  const index = (PROJECT_ZONES as readonly ZoneSlug[]).indexOf(zone);
+  return (
+    <footer className="term-status" aria-hidden="true">
+      <span className="term-session">[sim]</span>
+      {WINDOWS.map((w, i) => (
+        <span
+          key={w}
+          className={w === district ? "term-win term-win-active" : "term-win"}
+        >
+          {i}:{windowName(w)}
+        </span>
+      ))}
+      <span className="term-right">
+        {index >= 0 ? `${index + 1}/${PROJECT_ZONES.length}  ` : ""}❄ nix
+      </span>
+    </footer>
   );
 }
 
 /**
- * The one place project text appears in the simulator: a floating glass
- * panel that fills the left half of the screen with the project the
- * visitor is next to, or the how-to guide at the hub. It collapses to a
- * tab on the edge and stays collapsed until asked, pulsing when a new
- * zone arrives.
+ * The one place project text appears in the simulator: a terminal window
+ * on the left, in the bamboo palette, showing the project the visitor is
+ * next to as rendered markdown, or the guide at the hub as help output.
+ * It collapses to a tab on the edge and stays collapsed until asked,
+ * pulsing when a new zone arrives.
  */
 export function ProjectPanel() {
   const zone = useSim((s) => s.zone);
@@ -197,9 +169,14 @@ export function ProjectPanel() {
   const id = useId();
   const project = zone && zone !== "hub" ? projectForZone(zone) : undefined;
   const isGuide = zone === "hub";
-  const hue = project?.accent;
-  const eyebrow = isGuide ? guide.kicker : zone;
+  const hue = termHue(project?.accent);
   const title = isGuide ? guide.title : (project?.name ?? zone);
+  const path = zone
+    ? isGuide
+      ? "~/sim"
+      : `~/sim/${windowName(ZONE_DISTRICT[zone])}/${zone}`
+    : "~";
+  const command = isGuide ? "sim --help" : `glow ${zone}.md`;
 
   useEffect(() => {
     panel.dispatch({ type: "zone", zone });
@@ -215,41 +192,46 @@ export function ProjectPanel() {
         aria-live="polite"
         aria-hidden={collapsed || hidden}
         hidden={hidden}
-        className={`pointer-events-none fixed z-20 flex transition-transform ease-out ${motion} inset-x-3 bottom-3 max-h-[52vh] md:inset-x-auto md:top-[5.5rem] md:bottom-auto md:left-5 md:max-h-[calc(100vh-10rem)] md:w-[min(44vw,40rem)] ${
+        className={`pointer-events-none fixed z-20 flex transition-transform ease-out ${motion} inset-x-3 bottom-3 max-h-[54vh] md:inset-x-auto md:top-[5.25rem] md:bottom-auto md:left-5 md:max-h-[calc(100vh-9.5rem)] md:w-[min(44vw,41rem)] ${
           collapsed
             ? "translate-y-[calc(100%+1rem)] md:translate-x-[calc(-100%-1.5rem)] md:translate-y-0"
             : ""
         }`}
       >
-        <div
-          className={`pointer-events-auto flex h-full w-full flex-col overflow-hidden rounded-2xl ${glass}`}
-          style={glassHighlight}
-        >
-          <div className="flex items-start justify-between gap-4 px-7 pt-6 md:px-8 md:pt-7">
-            <div className="min-w-0">
-              <p
-                className="font-mono text-[12px] tracking-[0.2em] uppercase"
-                style={{ color: hueVar(hue) }}
-              >
-                {eyebrow}
-              </p>
-              <h2 className="mt-2 font-display text-[28px] leading-tight font-semibold tracking-tight md:text-[32px]">
-                {title}
-              </h2>
-            </div>
-            <CollapseButton collapsed={collapsed} controls={id} />
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-7 pb-7 md:px-8 md:pb-8">
+        <div className="term pointer-events-auto">
+          <header className="term-bar">
+            <span className="truncate">
+              <span className="term-user">dhruv@nixos</span> {path}
+            </span>
+            <button
+              type="button"
+              onClick={() => panel.dispatch({ type: "toggle" })}
+              aria-expanded={!collapsed}
+              aria-controls={id}
+              aria-label={
+                collapsed ? "Expand project panel" : "Collapse project panel"
+              }
+              className="term-btn"
+            >
+              hide <span aria-hidden="true">‹</span>
+            </button>
+          </header>
+          <div className="term-body">
+            <p className="term-cmd">
+              <span className="term-prompt" aria-hidden="true">
+                ❯
+              </span>
+              {command}
+            </p>
             {isGuide ? (
               <GuideBody hasKeyboard={hasKeyboard} />
             ) : project ? (
               <ProjectBody project={project} hue={hue} />
             ) : (
-              <p className="mt-3 font-mono text-sm text-faint">
-                content pending
-              </p>
+              <p className="term-muted">content pending</p>
             )}
           </div>
+          {zone ? <StatusLine zone={zone} /> : null}
         </div>
       </aside>
 
@@ -261,31 +243,20 @@ export function ProjectPanel() {
           aria-expanded={false}
           aria-controls={id}
           aria-live="polite"
-          className={`pointer-events-auto fixed bottom-3 left-3 z-20 flex items-center gap-3 rounded-full px-4 py-2.5 md:top-1/2 md:bottom-auto md:left-0 md:-translate-y-1/2 md:flex-col md:rounded-l-none md:rounded-r-2xl md:px-3 md:py-5 ${glass} ${pulse > 0 && !reducedMotion ? "panel-pulse" : ""}`}
-          style={{ ...glassHighlight, ["--pulse" as string]: hueVar(hue) }}
+          className={`term-tab pointer-events-auto fixed bottom-3 left-3 z-20 flex items-center gap-2 rounded-md px-3 py-2 md:top-1/2 md:bottom-auto md:left-0 md:-translate-y-1/2 md:flex-col md:rounded-l-none md:px-2.5 md:py-4 ${
+            pulse > 0 && !reducedMotion ? "panel-pulse" : ""
+          }`}
+          style={{ ["--pulse" as string]: hue }}
         >
+          <span className="term-prompt" aria-hidden="true">
+            ❯
+          </span>
           <span
-            className="h-2.5 w-2.5 rounded-full"
-            style={{ background: hueVar(hue) }}
-            aria-hidden="true"
-          />
-          <span className="font-display text-[15px] font-semibold tracking-tight md:[writing-mode:vertical-rl] md:rotate-180">
+            className="font-semibold md:[writing-mode:vertical-rl] md:rotate-180"
+            style={{ color: hue }}
+          >
             {title}
           </span>
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-            className="text-muted md:rotate-90"
-          >
-            <path d="M9 6l6 6-6 6" />
-          </svg>
         </button>
       ) : null}
     </>

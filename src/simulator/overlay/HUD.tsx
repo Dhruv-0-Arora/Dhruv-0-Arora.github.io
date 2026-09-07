@@ -22,9 +22,7 @@ export function HUD() {
     <div className="pointer-events-none fixed inset-0 z-20">
       <header className="absolute top-0 left-0 flex w-full items-start justify-between p-5">
         <div className="pointer-events-auto">
-          <p className="font-display text-base font-semibold tracking-tight">
-            {profile.name}
-          </p>
+          <p className="font-mono text-[14px] font-semibold">{profile.name}</p>
           <p className={mono}>{profile.kicker}</p>
         </div>
         <div className="pointer-events-auto">
