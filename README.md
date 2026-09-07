@@ -38,4 +38,5 @@ The build fails on any lint, naming, or budget breach.
 Content lives in `src/content/` as typed data modules; components never hard-code copy.
 The Mirabuf pipeline is in `src/mirabuf/` (`parseMira.ts`, `buildRobot.ts`, generated proto module).
 
-Deployed on Vercel.
+Deployed to GitHub Pages at [darora1.me](https://darora1.me) by `.github/workflows/deploy.yml` on every push to `main` (lint, test, build, then publish `dist/`).
+`public/CNAME` carries the custom domain into the build.

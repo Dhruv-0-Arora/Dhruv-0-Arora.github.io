@@ -71,6 +71,13 @@ Verification: lint, build and 112 tests green; 60 fps headed in both themes at t
 
 **Copy.** All thirteen zone projects rewritten from the corpus with a `details` list of technical facts, rendered in the panel; tests assert the fixed authorship framings.
 
+## 2026-09-07: remote and deploy
+
+**Remote.** The history was rebuilt on top of the old 2023 site in the `Dhruv-0-Arora.github.io` repository and pushed.
+
+**Deploy.** `.github/workflows/deploy.yml` lints, tests, builds and publishes `dist/` to GitHub Pages on every push to `main`; `public/CNAME` sets the custom domain darora1.me, and `index.html` carries the canonical URL.
+The cache headers in `vercel.json` do not apply on Pages.
+
 ## Open items
 
 - Photos for the carousel and clips for the two screens are placeholders until Dhruv provides them.
@@ -81,4 +88,3 @@ Verification: lint, build and 112 tests green; 60 fps headed in both themes at t
 - Dark-theme lighting is flat on large surfaces; a hemisphere and directional pair is all there is.
 - The hub-to-Terminal road passes between the keyboard halves.
 - Owner questions in [content-rules.md](content-rules.md).
-- No git remote and no Vercel deploy yet.
