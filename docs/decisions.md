@@ -52,8 +52,15 @@ Add new entries at the bottom with the date; do not rewrite old ones.
 - **Shadows are real shadow maps.** One 4096 map over the whole ring; soft PCF; loaded meshes cast and receive, instancers opt in. Measured at 60 fps on the authoring GPU.
 - **Pictures never enter the world pipeline.** Photos and clips are runtime textures on `MediaSurface`; a palette placeholder shows until a source exists.
 - **The hub zone is the guide.** A `hub` contract zone at the origin makes the proximity tracker open the how-to panel at spawn without special-casing rails.
+
+## Trails and lakes (2026-09-07)
+
+- **Lakes are discs clipped by terrain, not shaped meshes.** A basin is carved into the height function and a flat `tok.water` disc sits at the water level; wherever the ground rises through the disc is the shoreline, so the outline comes from the same noise as the rest of the range and never needs authoring.
+- **Trails are routed, not drawn.** A* over the carved height field, with a cost of length times a grade penalty plus a turn penalty and a shore discount, finds valley floors and real switchbacks; the result is a `trail.<slug>` curve like a route, so the exporter and meta already know the shape.
+- **Trails are painted from a polar mask texture, not by distance to polylines per pixel.** Two trails of 150 points would cost 300 segment distances per fragment across 138k triangles; one 2048 x 256 RGBA texture built once from meta costs a single sample, wraps naturally in theta, and gives the conifer scatter the same answer on the CPU.
+- **The water's alpha is the token's alpha.** `--c-water` carries `/ 0.92`, so the registry keeps the lakes translucent through every retint instead of a shader patch fighting it.
 - **Panel collapse is remembered.** Collapsing once means collapsed until reopened; a new zone pulses the tab instead of reopening.
-- **Look is click-and-drag, not pointer sway** (2026-09-07). The world follows the pointer, coasts after release with a capped velocity, and eases back to the rail's aim as the visitor scrolls, so a section is never entered facing backwards. Only the canvas starts a drag, so overlays keep their clicks; touch keeps scrolling as the travel gesture. Pure state machine in `controls/dragLook.ts`.
+- **Look is click-and-drag, not pointer sway** (2026-09-07). The world follows the pointer sideways and the view follows it vertically (drag down looks down), coasts after release with a capped velocity, and eases back to the rail's aim as the visitor scrolls, so a section is never entered facing backwards. Only the canvas starts a drag, so overlays keep their clicks; touch keeps scrolling as the travel gesture. Pure state machine in `controls/dragLook.ts`.
 
 ## Mountain fidelity (2026-09-07)
 
@@ -70,3 +77,19 @@ Add new entries at the bottom with the date; do not rewrite old ones.
 - **The accent is forest green.** `#2f7d4f` by day, `#5fc383` by night, with `on-accent` flipped to suit. Everything authored as `tok.accent` (the hub ring, chevrons, climber jackets, screen strips) follows through the retint; the five data hues, amber included, are unchanged so project colors keep their meaning.
 - **The Dozer drives at 2 m.** Doubled from its real 1.1 m so it reads from the rails; collision radius and chase camera scaled with it.
 - **Project copy carries a `details` list.** Descriptions were rewritten from the local GitHub corpus with one technical fact per line; the panel renders them as a list. Framings stay fixed and are now asserted by tests.
+
+## Cascaded shadows, night light and the Milky Way (2026-09-07)
+
+- **Cascaded shadow maps instead of one orthographic map over the ring.** A single 4096 map over 1040 m gave 25 cm texels everywhere: blurry on a strut two meters from the rail, sharper than a pixel on a peak 500 m away. Four cascades from three's `CSM` (practical split, 700 m far, 2048 per cascade and 4096 for the last) give about 10 cm texels near the camera and 40 to 50 cm on the far range, which is still under two screen pixels at that distance. Fading between cascades hides the seams. The extra depth passes cost less than the old map's fill.
+- **The cascade shader is composed, not assigned.** `CSM.setupMaterial` overwrites `onBeforeCompile`, which would wipe the terrain patch. `world/csm.ts` runs the material's own patch first and the cascade one second, keys the program cache on both, re-wraps when a patch is replaced later, and a per-frame sweep in `scene.onBeforeRender` catches materials created by runtime components before their first compile, so nothing is ever lit by all four cascade lights at once.
+- **Bias scales with the texel.** Each cascade's normal bias is two of its texels, so the smooth range shows no acne in the far cascade and a strut still meets its shadow in the near one.
+- **Night keeps its shadows.** The moon casts through the same cascades at 1.6 of a cool blue-white, and the ground plate, painted in the page background that is near black at night, is lifted toward the muted tone by the registry (`NIGHT_GROUND_LIFT`) so there is an albedo for a moon shadow to fall on; buildings and the range throw soft shadows and shaded faces stay legible instead of flat.
+- **The Milky Way is procedural and on brand.** A great circle around a pole set next to the moon, so the band arches over the opposite half of the sky at about 61 degrees, with fbm dust structure, a warm bulge, a broken dark rift and a second, fainter star lattice that thickens toward the band. Only at night, only from the fragment shader, in the same pale tones as the stars.
+
+## Flyer, terminal panel and the rail (2026-09-07)
+
+- **The Flyer is generated, not modelled.** Two surface builders (camber, droop, tip rounding) and one blade builder cover every fabric and propeller part, so the whole aircraft stays in one file with unit tests instead of an opaque glb, and it still retints with the palette.
+- **One texture for all muslin.** The rib texture's u coordinate is metres along the span, so the same canvas paints ribs at true 0.3 m pitch on the wings, the elevator and the rudders.
+- **The panel is a terminal.** The previous glass sheet with an uppercase eyebrow, a display title, chips and pills read as generated. A terminal window has one face, one grid, a real hierarchy (prompt, heading, quote, list) and a status line, and every part of it is something the reader has seen on a real machine. The bamboo palette was chosen because its greens sit next to the forest accent; project hues map onto the terminal's own colors.
+- **The track is derived, never authored.** Rails, ties, beam and train are all built from `meta.rail` at load, so the rail curve in Blender stays the single source of truth for where the visitor travels and what they ride on. Ties and beam are one instanced mesh each; the rails are two tubes; the loop costs four draw calls. The camera rides 2.4 m above the rail, a standing eye height over the lead car's floor, so the car stays out of a level view and appears when the visitor looks down or back.
+- **Drag down looks down.** The first drag-look moved the world with the pointer on both axes; vertically that reads as inverted to anyone used to a mouse, so only the horizontal axis keeps the grab-the-world feel.

@@ -51,8 +51,13 @@ Nothing in tracked files may depend on them.
 | `controls/dragLook.ts` | click-and-drag look offset with coasting and recentering |
 | `controls/flightController.ts` | arcade flight for the Flyer: throttle, bank, pitch, floor and ceiling, homing at the edge |
 | `world/heightGrid.ts` | polar heightmap of the range built from its vertices, the flight floor |
+| `world/csm.ts` | composes the cascaded-shadow shader with a material's own patch, sweeps the scene for new materials, texel-scaled bias |
 | `controls/devCamera.ts` | development-only fixed camera from `?cam=&at=&fov=` |
+| `flyer/flyerGeometry.ts` | cambered fabric surfaces, twisted propeller blades and the muslin rib painter for the Flyer |
+| `rail/railTrack.ts` | stations along the rail, wrap on the loop, tangent orientation, car spacing |
+| `overlay/zoneDistrict.ts` | which district each zone lives in, for the panel's status line |
 | `world/terrain/terrainField.ts` | treeline and forest weight, mirrored in the terrain shader |
+| `world/terrain/trailMask.ts` | polar mask of the trails and lake shores from `meta.trails` and `meta.lakes`, sampled by the terrain shader and the conifer scatter |
 | `controls/driveController.ts` | fixed 120 Hz substeps, circle-vs-AABB push-out, ground follow |
 | `proximity/proximity.ts` | one active zone, 1.25r exit hysteresis, handover to a closer overlapping zone |
 | `theme/palette.ts`, `retint.ts`, `oklab.ts` | CSS color parsing, material-name binding, lerped repaint, Oklab gradients |
@@ -64,7 +69,9 @@ Nothing in tracked files may depend on them.
 `src/simulator/world/instancing/` holds one component per repetitive or animated field, anchored on a zone, a route or a loaded district from `meta.json`.
 Bamboo grove on `dirnt`, hex map on `cypher`, camera frusta on `altigoz`, candlesticks on `kerms` and `imc-prosperity-4`.
 On the backdrop: `Climbers` (rope teams walking `meta.routes`, pure path math in `climbPath.ts`) and `Conifers` (trees scattered over the loaded range in proportion to the terrain field's forest weight).
-At the hub: `PhotoCarousel` (six frames fed by `src/content/gallery.ts`) and, hanging over the pad, the Flyer (`flyer/FlyerRig.tsx`, a life-size 1903 biplane from primitives, props idling until it is flown).
+At the hub: `PhotoCarousel` (six frames fed by `src/content/gallery.ts`) and, hanging over the pad, the Flyer (`flyer/FlyerRig.tsx`, a life-size 1903 biplane: generated cambered muslin surfaces with a rib texture, spruce struts and wires, the engine and its chain drives, twisted pusher propellers and the prone pilot, props idling until it is flown).
+
+The rail itself is visible: `rail/RailTrack.tsx` builds two rail tubes, instanced ties and a beam from the exported rail curve, and `rail/Train.tsx` parks three open cars at `frame.railT`, the smoothed parameter the camera follows, so the visitor rides the lead car and the train waits on the track while a vehicle is out. Every visual constant is in `rail/railStyle.ts`; the shape is the Blender rail.
 `ZoneScreen` hangs a 16:9 panel at the zones listed in `world/zoneScreens.ts`; `mediaSurface.ts` paints its placeholder and swaps in a photo or a looping video.
 They derive per-instance colors from the palette in the store, so they follow the theme like authored materials.
 
@@ -73,18 +80,23 @@ They derive per-instance colors from the palette in the store, so they follow th
 `world/terrain/terrainShader.ts` patches the range's `tok.rock` material: per fragment it derives snow, glacier ice, rock strata, scree, meadow and forest floor from world height, slope, sun aspect and hash noise, lowers roughness on snow, and bends the normal with a fine bump.
 `world/terrain/terrainField.ts` is the CPU mirror of the treeline and forest weight, used by `Conifers` and the tests.
 `world/terrain/Terrain.tsx` attaches the patch to the loaded backdrop and lerps the snow, forest and meadow uniforms from the palette on the retint clock.
+Trails and lake shores are not in the noise: `trailMask.ts` rasterizes `meta.trails` (a 3.5 m tread with a soft edge) and a gravel ring around each of `meta.lakes` into one polar texture (theta across and wrapping, rho from the plate's edge to the rim), and the shader samples it with the same mapping to paint dirt and gravel and to keep forest and meadow off the tread.
+`Conifers` reads the same mask so no tree stands on a trail or in a lake.
+`world/Lake.tsx` patches the `tok.water` disc material: scrolling ripple normals, low roughness, and a fresnel mix toward the palette's sky color at grazing angles; the water color and its alpha are the token, kept current by the registry.
 
 ## Sky, sun and shadows
 
-`world/SkyDome.tsx` is a camera-following gradient dome in palette colors with a sun disc by day and a moon and stars by night.
-`world/SunLight.tsx` is the one shadow-casting light; `world/sky.ts` holds the sun direction both agree on.
+`world/SkyDome.tsx` is a camera-following gradient dome in palette colors with a sun disc by day and, by night, a moon, two star lattices and a procedural Milky Way (a great circle around `galacticPole()` with a bulge, dust lanes and a wide halo, all fbm in the fragment shader).
+`world/SunLight.tsx` drives four cascaded shadow maps (three's `CSM`, practical split to 700 m, 2048 per cascade and 4096 for the far one, fading between cascades) that follow the camera, plus the hemisphere and ambient lights; by night the same cascades cast from the moon at low intensity so shadows stay present.
+`world/sky.ts` holds the sun, moon and galactic pole directions the dome and the lights agree on.
+Every lit material is composed with the cascade shader in `scene.onBeforeRender` through `world/csm.ts`, which keeps the terrain and water patches intact; light direction, color and intensity glide on the retint clock.
 Loaded meshes cast and receive shadows; instancers opt in.
 
 ## Overlays
 
 All text is DOM: the HUD (identity, mode hints, loading and signal lines, dev stats), the project panel, and the theme toggle.
 Nothing is drawn as text inside the canvas.
-The panel (`overlay/ProjectDock.tsx`, exported as `ProjectPanel`) is a floating glass sheet on the left with the project the visitor is next to, or the how-to guide from `src/content/guide.ts` at the `hub` zone.
+The panel (`overlay/ProjectDock.tsx`, exported as `ProjectPanel`) is a terminal window on the left in the bamboo.nvim palette (`--t-*` tokens in `index.css`): a `dhruv@nixos` path bar, a prompt line, the project rendered like glow renders markdown (title, tagline, quoted highlight, description, details, stack, links), and a tmux-style status line with the districts as windows from `overlay/zoneDistrict.ts`. At the `hub` zone it shows the how-to guide from `src/content/guide.ts` as `sim --help` output.
 It collapses to an edge tab; `overlay/panelState.ts` keeps that choice in `localStorage` and pulses the tab when a new zone arrives while collapsed.
 
 ## Commands

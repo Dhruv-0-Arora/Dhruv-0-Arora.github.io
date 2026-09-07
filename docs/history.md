@@ -78,6 +78,33 @@ Verification: lint, build and 112 tests green; 60 fps headed in both themes at t
 **Deploy.** `.github/workflows/deploy.yml` lints, tests, builds and publishes `dist/` to GitHub Pages on every push to `main`; `public/CNAME` sets the custom domain darora1.me, and `index.html` carries the canonical URL.
 The cache headers in `vercel.json` do not apply on Pages.
 
+## 2026-09-07: cascaded shadows, night light and the Milky Way
+
+**Shadows.** One 4096 orthographic map over the whole ring became four camera-following cascades (`world/SunLight.tsx`, three's `CSM`; `world/csm.ts` composes the cascade shader with the terrain and water patches).
+Near shadows went from 25 cm texels to about 10 cm; the far range keeps its shadows to 700 m.
+
+**Night.** The moon now casts through the same cascades at low intensity, with a slightly stronger hemisphere and ambient, so the night theme keeps soft shadows.
+
+**Sky.** A procedural Milky Way with dust lanes and a bulge, plus a fainter second star field, arches over the side of the night sky opposite the moon.
+
+## 2026-09-07: trails and lakes
+
+**Lakes.** Two tarns in the lowest saddles of the range, Mowich (east of Rainier, basin radius 28 m) and Tipsoo (between Stuart and Adams, 24 m), carved into the height field with a bank, a moraine lip and an irregular noisy shoreline; a new `water` token, a `tok.water` disc per lake in the backdrop glb, and `Lake.tsx` for ripples and fresnel.
+
+**Trails.** One trail per lake from the foot of the range to the shore and over the saddle, routed by A* with grade and turn penalties in `06_backdrop.py`, exported as `meta.trails`, painted by the terrain shader from a polar mask (`trailMask.ts`) as a dirt tread with trodden margins; gravel shores around the water; no trees on trails or in lakes.
+
+**Pipeline.** `meta.lakes` and `meta.trails` with validation and tests; lint accepts `trail.<slug>` curves and `<district>.lake.<slug>` meshes (water only); the fixture and the end-to-end test carry one of each.
+
+## 2026-09-07: a real Flyer, a terminal panel, the rail made visible
+
+**Flyer.** Rebuilt from boxes into the 1903 machine: cambered muslin surfaces generated in `flyerGeometry.ts` (1-in-20 camber peaking at a third of the chord, drooping tips, rounded trailing corners) with a painted rib texture shared across wings, elevator and rudders; spars and streamlined struts with metal fittings; crossed flying wires and drag wires in every bay; skids that curve up to carry the biplane elevator; twin rudders on the tail booms; the horizontal four-cylinder engine with fins, flywheel, radiator and tank; two chain runs in their tubes to each propeller, the left pair crossed; twisted two-blade pusher propellers; the pilot prone in the hip cradle.
+
+**Panel.** The glass project panel became a terminal window in the bamboo.nvim palette (vulgaris at night, light by day): a `dhruv@nixos` path bar, a prompt line, the project rendered like glow renders markdown (title, tagline, a quoted highlight, description, `## details`, `## stack`, repo and demo links) and a tmux-style status line with the five districts as windows. The guide is `sim --help` output with the keys in a yellow column. The HUD name is set in the same mono face.
+
+**Rail made visible.** The camera's rail is now a track: two steel rails on floating ties over a slim beam, generated in `src/simulator/rail/` from the exported rail curve, and a three-car open train that rides `frame.railT`, the same smoothed parameter the camera follows. The visitor stands in the lead car; the train waits on the track while the Dozer or the Flyer is out. Everything about the look lives in `railStyle.ts`; the shape is the Blender rail, so rerouting for a new project changes no runtime code.
+
+**Tuning.** Drag-look no longer inverts vertically (drag down looks down). The moon is brighter (1.6) and the ground plate is lifted off black at night in the registry so moon shadows show on it. The Milky Way is broader, fainter and more mottled than the first cut.
+
 ## Open items
 
 - Photos for the carousel and clips for the two screens are placeholders until Dhruv provides them.

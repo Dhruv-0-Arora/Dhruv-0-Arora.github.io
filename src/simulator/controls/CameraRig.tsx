@@ -303,6 +303,7 @@ export function CameraRig({
         (frame.scrollT - smoothT.current) * damp(RAILS.scrollFollow);
       const t = smoothT.current;
       const travel = Math.abs(t - before);
+      frame.railT = t;
       world.rail.pointAt(t, s.v3);
       s.pos.set(s.v3[0], s.v3[1], s.v3[2]);
       lookTargetAt(world.meta.looks, t, s.v3);
@@ -362,6 +363,7 @@ export function CameraRig({
         window.scrollTo({ top: frame.returnT * max, behavior: "instant" });
       }
       const t = frame.returnT;
+      frame.railT = t;
       world.rail.pointAt(t, s.v3);
       s.pos.set(s.v3[0], s.v3[1], s.v3[2]);
       lookTargetAt(world.meta.looks, t, s.v3);

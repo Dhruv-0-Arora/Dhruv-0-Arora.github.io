@@ -13,6 +13,8 @@ import { useCanvasActive } from "../lib/useCanvasActive";
 import { CameraRig } from "./controls/CameraRig.tsx";
 import { DozerRig } from "./dozer/DozerRig.tsx";
 import { FlyerRig } from "./flyer/FlyerRig.tsx";
+import { RailTrack } from "./rail/RailTrack.tsx";
+import { Train } from "./rail/Train.tsx";
 import { sim } from "./simStore.ts";
 import { useRetint } from "./theme/useRetint.ts";
 import type { District, ZoneSlug } from "./world/contract.ts";
@@ -26,6 +28,7 @@ import { HexGround } from "./world/instancing/HexGround.tsx";
 import { IMC_SHAPE, KERMS_SHAPE } from "./world/instancing/ohlc.ts";
 import { PhotoCarousel } from "./world/instancing/PhotoCarousel.tsx";
 import { ZoneScreen } from "./world/instancing/ZoneScreen.tsx";
+import { Lake } from "./world/Lake.tsx";
 import {
   DISTRICT_HINTS,
   districtLoadOrder,
@@ -36,6 +39,7 @@ import {
 import { SkyDome } from "./world/SkyDome.tsx";
 import { SunLight } from "./world/SunLight.tsx";
 import { Terrain } from "./world/terrain/Terrain.tsx";
+import { buildTrailMask } from "./world/terrain/trailMask.ts";
 import { ZONE_SCREENS } from "./world/zoneScreens.ts";
 
 function WorldScene() {
@@ -74,6 +78,16 @@ function WorldScene() {
   const terrain = useMemo(
     () => (backdrop ? heightGridFromObject(backdrop, 200, 480) : null),
     [backdrop],
+  );
+  // Trails and lake shores, painted by the terrain and avoided by the trees.
+  const trailMask = useMemo(
+    () => buildTrailMask(world.meta.trails, world.meta.lakes),
+    [world.meta],
+  );
+  const treeExclude = useMemo(
+    () => (x: number, z: number) =>
+      trailMask.trailAt(x, z) > 0.15 || trailMask.inLake(x, z),
+    [trailMask],
   );
 
   useEffect(() => {
@@ -137,9 +151,18 @@ function WorldScene() {
       {world.meta.routes.length > 0 ? (
         <Climbers routes={world.meta.routes} onMount={onBackdrop} />
       ) : null}
-      {backdrop ? <Terrain backdrop={backdrop} /> : null}
-      {backdrop ? <Conifers backdrop={backdrop} onMount={onBackdrop} /> : null}
+      {backdrop ? <Terrain backdrop={backdrop} mask={trailMask} /> : null}
+      {backdrop ? <Lake backdrop={backdrop} /> : null}
+      {backdrop ? (
+        <Conifers
+          backdrop={backdrop}
+          exclude={treeExclude}
+          onMount={onBackdrop}
+        />
+      ) : null}
       <FlyerRig rigRef={flyerRef} />
+      <RailTrack rail={world.rail} />
+      <Train rail={world.rail} />
       <PhotoCarousel onMount={onShared} />
       {ZONE_SCREENS.map((spec) => {
         const anchor = zone(spec.zone);

@@ -43,6 +43,8 @@ export interface FrameState {
   flight: FlightInput;
   /** Rail t the camera is gliding back to; null until computed. */
   returnT: number | null;
+  /** Smoothed rail t the camera last rode; the train sits here. */
+  railT: number;
   /** Where attention is: the camera aim on rails, the Dozer when driving. */
   probe: [number, number, number];
 }
@@ -70,6 +72,7 @@ export const frame: FrameState = {
   input: { throttle: 0, steer: 0 },
   flight: { ...IDLE_FLIGHT },
   returnT: null,
+  railT: 0,
   probe: [0, 0, 0],
 };
 
@@ -110,6 +113,7 @@ export const sim = {
     frame.input = { throttle: 0, steer: 0 };
     frame.flight = { ...IDLE_FLIGHT };
     frame.returnT = null;
+    frame.railT = 0;
     frame.probe = [0, 0, 0];
     emit();
   },
