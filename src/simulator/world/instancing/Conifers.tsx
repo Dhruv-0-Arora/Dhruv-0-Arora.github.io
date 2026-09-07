@@ -2,16 +2,13 @@ import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { useSim } from "../../simStore.ts";
+import { forestWeight } from "../terrain/terrainField.ts";
 
-/** Forest band: trees only between these heights and on gentle enough slopes. */
-const TREE_MIN_Y = 4;
-const TREE_MAX_Y = 46;
-const MAX_SLOPE = 0.62;
-const MAX_TREES = 2600;
-/** Square meters of slope per tree. */
-const AREA_PER_TREE = 95;
-const TREE_H = 7.5;
-const TREE_R = 1.7;
+const MAX_TREES = 9000;
+/** Square meters of fully forested slope per tree. */
+const AREA_PER_TREE = 34;
+const TREE_H = 5.2;
+const TREE_R = 1.15;
 
 interface Tree {
   x: number;
@@ -22,9 +19,11 @@ interface Tree {
 }
 
 /**
- * Scatters trees over the loaded range: every flat-shaded triangle in the
- * forest band gets a few trees at random barycentric points. Seeded, so
- * the forest is the same on every visit.
+ * Scatters trees over the loaded range: every triangle gets trees in
+ * proportion to its area and the terrain field's forest weight at its
+ * center, at random barycentric points, so the trees stand exactly where
+ * the shader paints forest floor. Seeded, so the forest is the same on
+ * every visit.
  */
 export function scatterTrees(backdrop: THREE.Object3D): Tree[] {
   let s = 61;
@@ -51,15 +50,20 @@ export function scatterTrees(backdrop: THREE.Object3D): Tree[] {
       a.fromBufferAttribute(pos, at(i)).applyMatrix4(obj.matrixWorld);
       b.fromBufferAttribute(pos, at(i + 1)).applyMatrix4(obj.matrixWorld);
       c.fromBufferAttribute(pos, at(i + 2)).applyMatrix4(obj.matrixWorld);
+      const cx = (a.x + b.x + c.x) / 3;
       const cy = (a.y + b.y + c.y) / 3;
-      if (cy < TREE_MIN_Y || cy > TREE_MAX_Y) continue;
+      const cz = (a.z + b.z + c.z) / 3;
       ab.subVectors(b, a);
       ac.subVectors(c, a);
       n.crossVectors(ab, ac);
       const area = n.length() / 2;
       n.normalize();
-      if (n.y < MAX_SLOPE) continue;
-      const want = Math.min(4, Math.floor(area / AREA_PER_TREE + rand()));
+      const forest = forestWeight(cx, cy, cz, n.y);
+      if (forest < 0.08) continue;
+      const want = Math.min(
+        6,
+        Math.floor((area * forest) / AREA_PER_TREE + rand()),
+      );
       for (let k = 0; k < want; k++) {
         let u = rand();
         let v = rand();
@@ -80,13 +84,17 @@ export function scatterTrees(backdrop: THREE.Object3D): Tree[] {
   return trees;
 }
 
+/** A fir: two stacked crowns over a short trunk, open at the base. */
 function treeGeometry(): THREE.BufferGeometry {
-  const crown = new THREE.ConeGeometry(TREE_R, TREE_H, 6, 1);
-  crown.translate(0, TREE_H / 2 + 0.6, 0);
-  const trunk = new THREE.CylinderGeometry(0.22, 0.3, 0.8, 5);
-  trunk.translate(0, 0.4, 0);
-  const merged = mergeGeometries([crown, trunk], false);
-  crown.dispose();
+  const lower = new THREE.ConeGeometry(TREE_R, TREE_H * 0.62, 6, 1, true);
+  lower.translate(0, TREE_H * 0.31 + 0.5, 0);
+  const upper = new THREE.ConeGeometry(TREE_R * 0.7, TREE_H * 0.58, 6, 1, true);
+  upper.translate(0, TREE_H * 0.71 + 0.5, 0);
+  const trunk = new THREE.CylinderGeometry(0.16, 0.22, 0.7, 5, 1, true);
+  trunk.translate(0, 0.35, 0);
+  const merged = mergeGeometries([lower, upper, trunk], false);
+  lower.dispose();
+  upper.dispose();
   trunk.dispose();
   return merged;
 }
@@ -117,7 +125,7 @@ export function Conifers({ backdrop, onMount }: ConifersProps) {
     const e = new THREE.Euler();
     trees.forEach((t, i) => {
       p.set(t.x, t.y, t.z);
-      s.set(t.scale, t.scale, t.scale);
+      s.set(t.scale, t.scale * (0.9 + t.shade * 0.35), t.scale);
       e.set(0, t.shade * Math.PI * 2, 0);
       q.setFromEuler(e);
       mat.compose(p, q, s);

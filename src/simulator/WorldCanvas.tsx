@@ -34,6 +34,7 @@ import {
 } from "./world/loadWorld.ts";
 import { SkyDome } from "./world/SkyDome.tsx";
 import { SunLight } from "./world/SunLight.tsx";
+import { Terrain } from "./world/terrain/Terrain.tsx";
 import { ZONE_SCREENS } from "./world/zoneScreens.ts";
 
 function WorldScene() {
@@ -103,8 +104,6 @@ function WorldScene() {
     <>
       <SkyDome />
       <SunLight />
-      <hemisphereLight args={["#ffffff", "#8a8f98", 0.7]} />
-      <ambientLight intensity={0.15} />
       <primitive object={world.shared.group} />
       {districts.map((d) => (
         <primitive key={d.district} object={d.group} />
@@ -131,6 +130,7 @@ function WorldScene() {
       {world.meta.routes.length > 0 ? (
         <Climbers routes={world.meta.routes} onMount={onBackdrop} />
       ) : null}
+      {backdrop ? <Terrain backdrop={backdrop} /> : null}
       {backdrop ? <Conifers backdrop={backdrop} onMount={onBackdrop} /> : null}
       <HubOrrery zones={world.meta.zones} onMount={onShared} />
       <PhotoCarousel onMount={onShared} />

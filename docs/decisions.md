@@ -44,13 +44,22 @@ Add new entries at the bottom with the date; do not rewrite old ones.
 ## Detail pass (2026-09-07)
 
 - **The backdrop is a district, not a sky texture.** A `backdrop` collection exports like any other so budgets, lint and the retint registry apply; it is exempt from distance culling and loads first because its center is the hub.
-- **One heightfield, not separate peaks.** An annular grid with a seeded height function guarantees nothing floats and gives continuous ridgelines; peaks are pointed cones with ridged noise, snow and forest are per-face material slots.
+- **One heightfield, not separate peaks.** An annular grid with a seeded height function guarantees nothing floats and gives continuous ridgelines; peaks are cones with domain-warped ridged noise, volcanoes carry radial cleavers and a rounded dome.
 - **Bounds mean the drivable world.** The Dozer clamp reads the AABB of `col.ground`, so scenery can extend to 470 m without changing driving.
 - **Climbing routes are authored, not computed.** `route.<slug>` curves snapped to the mesh in Blender export as polylines; the runtime only interpolates.
-- **Trees are scattered at runtime from the loaded mesh.** The shipped glb is flat-shaded, so every triangle's slope and height are available for free; no tree positions in meta.
-- **Sky and sun are palette-driven.** A shader dome and one directional light share `sky.ts`; day is a warm sun in the north-north-east so the volcano's shadow reaches the hub, night is a moon in the south-west with stars.
-- **Shadows are real shadow maps.** One 2048 map over the whole ring; soft PCF; loaded meshes cast and receive, instancers opt in. Measured at 60 fps on the authoring GPU.
+- **Trees are scattered at runtime from the loaded mesh.** Every triangle's area, height and slope are read from the glb and weighted by the terrain field; no tree positions in meta.
+- **Sky and sun are palette-driven.** A shader dome and one directional light share `sky.ts`; day is a warm sun in the east-north-east, low enough to side-light the volcano and lay the eastern range's shadow over the plate, night is a moon in the south-west with stars.
+- **Shadows are real shadow maps.** One 4096 map over the whole ring; soft PCF; loaded meshes cast and receive, instancers opt in. Measured at 60 fps on the authoring GPU.
 - **Pictures never enter the world pipeline.** Photos and clips are runtime textures on `MediaSurface`; a palette placeholder shows until a source exists.
 - **The hub zone is the guide.** A `hub` contract zone at the origin makes the proximity tracker open the how-to panel at spawn without special-casing rails.
 - **Panel collapse is remembered.** Collapsing once means collapsed until reopened; a new zone pulses the tab instead of reopening.
 - **Look is click-and-drag, not pointer sway** (2026-09-07). The world follows the pointer, coasts after release with a capped velocity, and eases back to the rail's aim as the visitor scrolls, so a section is never entered facing backwards. Only the canvas starts a drag, so overlays keep their clicks; touch keeps scrolling as the travel gesture. Pure state machine in `controls/dragLook.ts`.
+
+## Mountain fidelity (2026-09-07)
+
+- **The range ships as shape only; its surface is painted per pixel.** The mesh is one smooth-shaded `tok.rock` surface at 720 x 96 (138k triangles). A patch on its standard material (`world/terrain/terrainShader.ts`) decides snow, glacier ice, bare rock, scree, meadow and forest floor at each fragment from height, slope, sun aspect and noise, and adds strata, fall-line streaks and a fine bump. Per-face material slots could never give a crisp snowline or texture between vertices, and image textures are forbidden by the contract.
+- **The terrain field exists twice, on purpose.** `terrainField.ts` is the CPU copy of the shader's treeline and forest weight so the conifer scatter and the tests agree with what the shader paints. The noise is the same hash and octaves on both sides.
+- **Colors stay tokens.** Rock is the material's `diffuse` (kept current by the registry); snow, forest and meadow are uniforms lerped from the palette on the retint clock, so the range still glides between the day and night sims.
+- **Quads split along the flatter diagonal.** A crest crossing the grid otherwise renders as a staircase of alternating triangles under side light; the ridged noise is also rounded over a few metres for the same reason.
+- **A dev camera lives in the URL.** `?cam=x,y,z&at=x,y,z&fov=n` pins the rig in development only, so any slope can be inspected at any zoom without touching the rails.
+

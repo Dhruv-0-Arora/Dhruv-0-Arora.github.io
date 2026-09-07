@@ -6,6 +6,7 @@ import { ProximityTracker } from "../proximity/proximity.ts";
 import { frame, sim } from "../simStore.ts";
 import { contract } from "../world/contract.ts";
 import type { LoadedDistrict, WorldBase } from "../world/loadWorld.ts";
+import { parseDevCamera } from "./devCamera.ts";
 import {
   advance,
   createDriveState,
@@ -110,10 +111,50 @@ export function CameraRig({ world, districts, dozerRef }: CameraRigProps) {
   const smoothT = useRef(0);
   const currentTarget = useRef<THREE.Vector3 | null>(null);
   const statClock = useRef({ t: 0, frames: 0 });
+  const devCamera = useMemo(
+    () => (import.meta.env.DEV ? parseDevCamera(window.location.search) : null),
+    [],
+  );
+
+  const finishFrame = (rawDt: number) => {
+    // Distance culling per district. The backdrop is the horizon: always on.
+    const cull = contract.world.cullDistanceMeters;
+    for (const d of districts) {
+      d.group.visible =
+        d.district === "backdrop" ||
+        d.center.distanceTo(camera.position) < cull;
+    }
+
+    // Stats, twice a second.
+    const clock = statClock.current;
+    clock.t += rawDt;
+    clock.frames++;
+    if (clock.t >= 0.5) {
+      sim.set({
+        stats: {
+          fps: Math.round(clock.frames / clock.t),
+          calls: gl.info.render.calls,
+          triangles: gl.info.render.triangles,
+        },
+      });
+      clock.t = 0;
+      clock.frames = 0;
+    }
+  };
 
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.1);
     const snap = sim.get();
+    if (devCamera && camera instanceof THREE.PerspectiveCamera) {
+      camera.position.set(...devCamera.position);
+      camera.lookAt(...devCamera.target);
+      if (camera.fov !== devCamera.fov) {
+        camera.fov = devCamera.fov;
+        camera.updateProjectionMatrix();
+      }
+      finishFrame(rawDt);
+      return;
+    }
     if (camera instanceof THREE.PerspectiveCamera) {
       const fov = camera.aspect < 1 ? FOV_PORTRAIT : FOV_LANDSCAPE;
       if (camera.fov !== fov) {
@@ -255,29 +296,7 @@ export function CameraRig({ world, districts, dozerRef }: CameraRigProps) {
       }
     }
 
-    // Distance culling per district. The backdrop is the horizon: always on.
-    const cull = contract.world.cullDistanceMeters;
-    for (const d of districts) {
-      d.group.visible =
-        d.district === "backdrop" ||
-        d.center.distanceTo(camera.position) < cull;
-    }
-
-    // Stats, twice a second.
-    const clock = statClock.current;
-    clock.t += rawDt;
-    clock.frames++;
-    if (clock.t >= 0.5) {
-      sim.set({
-        stats: {
-          fps: Math.round(clock.frames / clock.t),
-          calls: gl.info.render.calls,
-          triangles: gl.info.render.triangles,
-        },
-      });
-      clock.t = 0;
-      clock.frames = 0;
-    }
+    finishFrame(rawDt);
   });
 
   return null;

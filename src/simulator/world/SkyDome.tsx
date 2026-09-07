@@ -92,9 +92,10 @@ export function skyTargets(palette: Palette): SkyTargets {
       stars: 1,
     };
   }
+  // The horizon keeps a little sky in it so snow summits separate from it.
   return {
-    zenith: bg.clone().lerp(sky, 0.34),
-    horizon: bg.clone().lerp(amber, 0.08),
+    zenith: bg.clone().lerp(sky, 0.42),
+    horizon: bg.clone().lerp(sky, 0.13).lerp(amber, 0.05),
     sun: new THREE.Color(1, 0.96, 0.86).lerp(amber, 0.15),
     dir: sunDirection(false),
     sunCos: Math.cos(0.02),

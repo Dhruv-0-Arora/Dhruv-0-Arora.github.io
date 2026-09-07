@@ -22,7 +22,9 @@ Scene rules the lint checks:
 `assets/blender/scripts/sessions/` is a numbered series of scripts built on `worldlib.py`.
 `01_greybox.py` wipes the scene and builds every district as primitives, the rail, zones, colliders and review cameras.
 Each later session (`02_terminal`, `03_evidence`, `04_fabrication`, `05_shared_redacted`, `06_backdrop`) calls `w.wipe_district(...)` for its own district, zones and colliders, rebuilds them in detail, and calls `w.rebuild_ground()`.
-`06_backdrop` is procedural: one annular heightfield around the plate with seeded peaks, ridged noise, and per-face material slots (`tok.forest` below the treeline, `tok.rock`, `tok.snow` above each peak's snowline), plus three routes snapped onto the surface with `obj.ray_cast`.
+`06_backdrop` is procedural: one smooth-shaded annular heightfield (720 segments x 96 rings) around the plate with seeded peaks, domain-warped ridged noise and radial cleavers on the volcanoes, plus three routes snapped onto the surface with `obj.ray_cast`.
+The range is a single `tok.rock` surface; snow, forest and rock detail are painted at runtime by the terrain shader (`src/simulator/world/terrain/`), so the session only shapes the ground.
+Each quad is split along the diagonal with the smaller height difference so crests do not render as staircases.
 Running the sessions in order recreates `world.blend` from git history alone.
 
 Helpers in `worldlib.py`: `box`, `cylinder`, `strut` (a to b), `sphere`, `plane`, `torus`, `empty`, `zone`, `collider_box`, `camera`, plus `material(name)` which sets preview colors from the light theme.

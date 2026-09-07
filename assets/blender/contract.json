@@ -75,17 +75,17 @@
         "evidence": 45000,
         "fabrication": 70000,
         "redacted": 5000,
-        "backdrop": 30000
+        "backdrop": 150000
       },
       "installations": {
         "astute": 25000,
         "keyboard": 20000,
         "pcb": 30000,
         "frc": 30000,
-        "range": 30000
+        "range": 150000
       },
       "installationDefault": 15000,
-      "authoredTotal": 240000,
+      "authoredTotal": 360000,
       "instancedTotal": 250000,
       "dozer": 50000,
       "ceiling": 500000
@@ -97,10 +97,10 @@
         "evidence": 900000,
         "fabrication": 1200000,
         "redacted": 100000,
-        "backdrop": 400000
+        "backdrop": 900000
       },
-      "totalSoft": 4000000,
-      "totalHard": 5000000
+      "totalSoft": 4500000,
+      "totalHard": 5500000
     }
   }
 }

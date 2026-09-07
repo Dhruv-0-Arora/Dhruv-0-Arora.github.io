@@ -6,10 +6,11 @@ import { sim } from "../simStore.ts";
 import { readPalette } from "./palette.ts";
 import { type MaterialRegistry, RETINT_MS } from "./retint.ts";
 
-// Wide enough that the mountain ring (250 to 470 m out) fades into the sky
-// rather than vanishing; districts are culled well inside this range.
-const FOG_NEAR = 200;
-const FOG_FAR = 760;
+// Atmospheric perspective, not a wall: the mountain ring (205 to 470 m
+// out) only softens toward the horizon tone, its far side keeping most of
+// its color; districts are culled well inside this range.
+const FOG_NEAR = 240;
+const FOG_FAR = 1050;
 
 function readCssPalette() {
   const style = getComputedStyle(document.documentElement);

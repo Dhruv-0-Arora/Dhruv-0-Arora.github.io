@@ -51,10 +51,20 @@ Dates are absolute.
 
 Verification: lint, build and 112 tests green; 60 fps headed in both themes at the hub, the north rail, Orion and Synthesis with 80 to 170 draw calls.
 
+## 2026-09-07: mountain fidelity
+
+**Range.** The backdrop heightfield went from 240 x 32 flat-shaded quads with per-face snow and forest slots to a 720 x 96 smooth-shaded surface (138k triangles, 777 KB) with domain-warped ridged noise, radial cleavers and rounded domes on the volcanoes, quads split along the flatter diagonal. Budgets raised to match (backdrop 150k tris, 900 KB; authored total 360k).
+
+**Terrain shader.** Snow, glacier ice, rock strata, fall-line streaks, scree, meadow and forest floor are now decided per pixel on the rock material from height, slope, sun aspect and hash noise, with a bump on the rock and lower roughness on the snow. The conifer scatter reads the same field from `terrainField.ts`, denser and smaller (two-tier firs, up to 9000).
+
+**Light.** The sun moved to the east-north-east at 30 degrees so the volcano is side-lit and the eastern range shadows the plate; a 4096 shadow map; a palette hemisphere light in `SunLight`; a horizon with some sky in it; fog pushed out to 240 to 1050 m. Rock, snow and forest tokens retuned toward andesite gray, cool white and deep conifer green.
+
+**Tooling.** `?cam=x,y,z&at=x,y,z&fov=n` pins a development camera for close inspection.
+
 ## Open items
 
 - Photos for the carousel and clips for the two screens are placeholders until Dhruv provides them.
-- The forest band is a flat token; tree density and the treeline could vary per peak.
+- The range's fine detail is procedural noise; real crevasse fields and moraines would need authored masks.
 
 - World poster images for the moment before the canvas is ready.
 - The keyboard-terrain drive (ramps and keys as ground) has not been exercised in a browser.

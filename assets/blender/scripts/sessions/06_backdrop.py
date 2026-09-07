@@ -10,11 +10,16 @@ sessions:
 One annular heightfield surrounds the 400 m plate: foothills at the plate's
 edge rising to a Cascade skyline. The peaks are named after the ones that
 frame the Pacific Northwest, with a Rainier-like volcano centered behind
-the hub as seen from spawn and a flat-topped Adams to its west. Faces above
-each peak's snowline take ``tok.snow``, faces below the treeline take
-``tok.forest`` (the runtime scatters conifers on them), and the band between
-is ``tok.rock``. Three routes, snapped onto the surface, are exported for
-the runtime climbers.
+the hub as seen from spawn and a flat-topped Adams to its west. The
+volcanoes carry radial cleavers with glacier troughs between them, the
+lesser ridges come from domain-warped ridged noise, and the whole range is
+smooth-shaded so the runtime can light it per pixel.
+
+The mesh is a single ``tok.rock`` surface. Snow, forest, scree and rock
+detail are painted at runtime by the terrain shader from height, slope and
+aspect (``src/simulator/world/terrain``), so the authored geometry only has
+to get the shape right. Three routes, snapped onto the surface, are
+exported for the runtime climbers.
 
 Everything is seeded, so the range is the same on every run.
 """
@@ -32,30 +37,31 @@ from mathutils import Vector, noise
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-from worldlib import HUB, World, material, purge_orphans, save, session_args  # noqa: E402
+from worldlib import HUB, World, purge_orphans, save, session_args  # noqa: E402
 
-SEGMENTS = 240
-RINGS = 32
+SEGMENTS = 720
+RINGS = 96
 INNER = 205.0
 OUTER = 470.0
 SEED = 6
 
-# (slug, theta deg, rho, height, sigma along, sigma across, snowline, flat cap)
+# (slug, theta deg, rho, height, sigma along, sigma across, cleavers, flat cap)
 # theta is measured counterclockwise from +x in the Blender frame; the spawn
 # camera looks toward +y, so 90 degrees is straight ahead from the hub.
+# ``cleavers`` is the number of radial ridges on a volcano, 0 for a ridge.
 PEAKS = [
-    ("rainier", 90.0, 350.0, 150.0, 70.0, 70.0, 45.0, None),
-    ("adams", 160.0, 330.0, 115.0, 55.0, 55.0, 55.0, 108.0),
-    ("baker", 30.0, 340.0, 125.0, 50.0, 50.0, 50.0, None),
-    ("stuart", 120.0, 310.0, 95.0, 40.0, 40.0, 60.0, None),
-    ("glacier-ridge", 235.0, 330.0, 85.0, 120.0, 35.0, 70.0, None),
-    ("crest-east", -20.0, 320.0, 75.0, 120.0, 35.0, 72.0, None),
-    ("twin-north", -125.0, 335.0, 88.0, 35.0, 35.0, 65.0, None),
-    ("twin-south", -140.0, 325.0, 80.0, 35.0, 35.0, 65.0, None),
-    ("filler-a", 60.0, 300.0, 50.0, 45.0, 30.0, 999.0, None),
-    ("filler-b", 195.0, 300.0, 40.0, 45.0, 30.0, 999.0, None),
-    ("filler-c", -60.0, 310.0, 55.0, 50.0, 30.0, 999.0, None),
-    ("filler-d", -95.0, 300.0, 35.0, 45.0, 30.0, 999.0, None),
+    ("rainier", 90.0, 350.0, 152.0, 74.0, 74.0, 9, None),
+    ("adams", 160.0, 330.0, 118.0, 58.0, 58.0, 7, 108.0),
+    ("baker", 30.0, 340.0, 126.0, 52.0, 52.0, 8, None),
+    ("stuart", 120.0, 310.0, 96.0, 42.0, 34.0, 0, None),
+    ("glacier-ridge", 235.0, 330.0, 86.0, 125.0, 36.0, 0, None),
+    ("crest-east", -20.0, 320.0, 76.0, 125.0, 36.0, 0, None),
+    ("twin-north", -125.0, 335.0, 88.0, 36.0, 36.0, 0, None),
+    ("twin-south", -140.0, 325.0, 80.0, 36.0, 36.0, 0, None),
+    ("filler-a", 60.0, 300.0, 50.0, 46.0, 30.0, 0, None),
+    ("filler-b", 195.0, 300.0, 40.0, 46.0, 30.0, 0, None),
+    ("filler-c", -60.0, 310.0, 55.0, 50.0, 30.0, 0, None),
+    ("filler-d", -95.0, 300.0, 35.0, 46.0, 30.0, 0, None),
 ]
 ROUTES = ["rainier", "adams", "baker"]
 
@@ -66,7 +72,7 @@ def smoothstep(a: float, b: float, x: float) -> float:
 
 
 def fbm(x: float, y: float, octaves: int = 4) -> float:
-    """Sum of value noise octaves in roughly [-1, 1]."""
+    """Sum of noise octaves in roughly [-1, 1]."""
     total, amp, freq, norm = 0.0, 1.0, 1.0, 0.0
     for _ in range(octaves):
         total += amp * noise.noise(Vector((x * freq, y * freq, 0.37)))
@@ -77,15 +83,28 @@ def fbm(x: float, y: float, octaves: int = 4) -> float:
 
 
 def ridged(x: float, y: float, octaves: int = 4) -> float:
-    """Ridged multifractal in [0, 1]: sharp crests instead of rolling bumps."""
-    total, amp, freq, norm = 0.0, 1.0, 1.0, 0.0
+    """Ridged multifractal in [0, 1]: sharp crests instead of rolling bumps.
+    Each octave is weighted by the one below it so crests stay clean. The
+    crest is rounded over a few metres so the mesh can carry it without a
+    staircase of alternating triangles along the arete."""
+    total, amp, freq, norm, weight = 0.0, 1.0, 1.0, 0.0, 1.0
     for _ in range(octaves):
-        n = 1.0 - abs(noise.noise(Vector((x * freq, y * freq, 1.91))))
-        total += amp * n * n
+        v = noise.noise(Vector((x * freq, y * freq, 1.91)))
+        n = 1.0 - math.sqrt(v * v + 0.012)
+        n = n * n * weight
+        weight = max(0.0, min(1.0, n * 2.0))
+        total += amp * n
         norm += amp
-        amp *= 0.55
+        amp *= 0.5
         freq *= 2.0
     return total / norm
+
+
+def warp(x: float, y: float) -> tuple[float, float]:
+    """Domain warp so ridges and drainages bend instead of running straight."""
+    wx = 26.0 * fbm(x * 0.0055 + 11.0, y * 0.0055 - 7.0, 3)
+    wy = 26.0 * fbm(x * 0.0055 - 4.0, y * 0.0055 + 9.0, 3)
+    return x + wx, y + wy
 
 
 def r_inner(theta: float) -> float:
@@ -100,7 +119,7 @@ def peak_center(theta_deg: float, rho: float) -> Vector:
 
 def peak_q(p, x: float, y: float) -> float:
     """Normalized elliptical distance from the peak's summit, elongated tangentially."""
-    _slug, theta, rho, _h, s_along, s_across, _snow, _cap = p
+    _slug, theta, rho, _h, s_along, s_across, _cleavers, _cap = p
     c = peak_center(theta, rho)
     a = math.radians(theta)
     tx, ty = -math.sin(a), math.cos(a)
@@ -111,43 +130,57 @@ def peak_q(p, x: float, y: float) -> float:
     return math.sqrt((u / s_along) ** 2 + (v / s_across) ** 2)
 
 
-def peak_weight(p, x: float, y: float) -> float:
-    """Peak profile in [0, 1]: a pointed cone near the summit with a gaussian skirt."""
-    q = peak_q(p, x, y)
+def peak_profile(q: float, volcano: bool) -> float:
+    """Peak profile in [0, 1]. Ridges are pointed cones with a gaussian
+    skirt; volcanoes carry a broad rounded dome over steeper flanks."""
+    if volcano:
+        return math.exp(-0.55 * q**1.9)
     return math.exp(-0.6 * q**1.5)
+
+
+def cleavers(p, x: float, y: float, q: float) -> float:
+    """Radial ridge-and-trough pattern of a glaciated volcano, in (0, 1]:
+    1 on a cleaver crest, lower in the glacier trough between two crests.
+    Strongest on the mid flank, fading at the summit and the skirt."""
+    _slug, theta, rho, _h, _s_along, _s_across, count, _cap = p
+    if count == 0:
+        return 1.0
+    c = peak_center(theta, rho)
+    phi = math.atan2(y - c.y, x - c.x)
+    wobble = 1.6 * fbm(x * 0.02 + 3.0, y * 0.02 + 5.0, 2)
+    crest = 0.5 + 0.5 * math.cos(count * phi + wobble)
+    band = smoothstep(0.1, 0.55, q) * (1.0 - smoothstep(1.3, 2.4, q))
+    return 1.0 - 0.24 * band * (1.0 - crest) ** 1.6
+
+
+def peak_height(p, x: float, y: float) -> float:
+    q = peak_q(p, x, y)
+    h = p[3] * peak_profile(q, p[6] > 0) * cleavers(p, x, y, q)
+    cap = p[7]
+    if cap is not None and h > cap:
+        # A rounded summit plateau rather than a razor-flat cut.
+        h = cap + (h - cap) * 0.08
+    return h
 
 
 def height(x: float, y: float, u: float) -> float:
     """Terrain height at (x, y); u is the ring fraction from inner (0) to outer (1)."""
     edge = smoothstep(0.0, 0.3, u) * (1.0 - smoothstep(0.84, 1.0, u) * 0.85)
+    xw, yw = warp(x, y)
     h = 3.0 * smoothstep(0.0, 0.25, u)
+    dome = 0.0
     for p in PEAKS:
-        peak_h = p[3] * peak_weight(p, x, y)
-        if p[7] is not None:
-            peak_h = min(peak_h, p[7])
-        h += peak_h
+        h += peak_height(p, x, y)
+        if p[6] > 0:
+            # Glaciated volcano summits are smooth domes: the crest noise
+            # below is held back there and the cleavers shape them instead.
+            dome = max(dome, 1.0 - smoothstep(0.25, 1.1, peak_q(p, x, y)))
     # Crests and gullies scale with the terrain so foothills stay soft.
-    carve = 0.9 + 0.35 * (ridged(x * 0.011, y * 0.011) - 0.5) + 0.12 * fbm(x * 0.045, y * 0.045, 3)
-    h *= carve
-    h += 7.0 * fbm(x * 0.02, y * 0.02) * smoothstep(0.05, 0.4, u)
+    crest = 0.34 * (ridged(xw * 0.0105, yw * 0.0105, 5) - 0.5) + 0.10 * fbm(xw * 0.04, yw * 0.04, 3)
+    h *= 0.86 + crest * (1.0 - 0.8 * dome)
+    h += 8.0 * fbm(xw * 0.018, yw * 0.018, 4) * smoothstep(0.05, 0.4, u)
+    h += 3.0 * ridged(xw * 0.05, yw * 0.05, 3) * smoothstep(0.1, 0.5, u)
     return max(0.0, h * edge)
-
-
-def snowline(x: float, y: float) -> float:
-    total, acc = 0.0, 0.0
-    for p in PEAKS:
-        w = peak_weight(p, x, y)
-        total += w
-        acc += w * p[6]
-    return acc / total if total > 1e-6 else 999.0
-
-
-TREELINE = 38.0
-
-
-def treeline(x: float, y: float) -> float:
-    """Forest gives way to rock here; it climbs a little on the sunnier faces."""
-    return TREELINE + 9.0 * fbm(x * 0.02 + 5.0, y * 0.02 - 3.0, 3)
 
 
 def build_range(w: World) -> bpy.types.Object:
@@ -164,39 +197,28 @@ def build_range(w: World) -> bpy.types.Object:
             ring.append(bm.verts.new((x, y, height(x, y, u))))
         grid.append(ring)
     bm.verts.ensure_lookup_table()
-    snow_faces: list[int] = []
-    forest_faces: list[int] = []
     for i in range(RINGS):
         for j in range(SEGMENTS):
             a = grid[i][j]
             b = grid[i][(j + 1) % SEGMENTS]
             c = grid[i + 1][(j + 1) % SEGMENTS]
             d = grid[i + 1][j]
-            # Wound so the normal points up; three.js culls back faces.
-            face = bm.faces.new((a, d, c, b))
-            face.smooth = False
-            cx = (a.co.x + b.co.x + c.co.x + d.co.x) / 4.0
-            cy = (a.co.y + b.co.y + c.co.y + d.co.y) / 4.0
-            cz = (a.co.z + b.co.z + c.co.z + d.co.z) / 4.0
-            line = snowline(cx, cy) + 6.0 * fbm(cx * 0.03, cy * 0.03, 2)
-            steep = max(a.co.z, b.co.z, c.co.z, d.co.z) - min(a.co.z, b.co.z, c.co.z, d.co.z)
-            if cz > line:
-                snow_faces.append(i * SEGMENTS + j)
-            elif cz < treeline(cx, cy) and steep < 14.0:
-                forest_faces.append(i * SEGMENTS + j)
+            # Each quad splits along the diagonal with the smaller height
+            # difference, so a crest or gully that crosses the grid keeps a
+            # clean edge instead of a staircase of alternating triangles.
+            # Wound so the normals point up; three.js culls back faces.
+            if abs(a.co.z - c.co.z) <= abs(b.co.z - d.co.z):
+                tris = ((a, d, c), (a, c, b))
+            else:
+                tris = ((a, d, b), (d, c, b))
+            for tri in tris:
+                face = bm.faces.new(tri)
+                face.smooth = True
     mesh = bpy.data.meshes.new("backdrop.range.ring")
     bm.to_mesh(mesh)
     bm.free()
     obj = bpy.data.objects.new("backdrop.range.ring", mesh)
-    # _add resets the material list, which also zeroes face indices, so the
-    # snow slot is assigned once both materials are in place.
     w._add(obj, col, "tok.rock", False)
-    obj.data.materials.append(material("tok.snow"))
-    obj.data.materials.append(material("tok.forest"))
-    for index in snow_faces:
-        mesh.polygons[index].material_index = 1
-    for index in forest_faces:
-        mesh.polygons[index].material_index = 2
     return obj
 
 
@@ -205,14 +227,14 @@ def build_routes(w: World, ring: bpy.types.Object, rng: random.Random) -> None:
     snapped onto the finished mesh so the climbers walk on the surface."""
     bpy.context.view_layer.update()
     for p in PEAKS:
-        slug, theta, rho, _h, s_along, _s_across, _snow, _cap = p
+        slug, theta, rho, _h, s_along, _s_across, _cleavers, _cap = p
         if slug not in ROUTES:
             continue
         summit = peak_center(theta, rho)
         toward_hub = (HUB - summit).normalized()
         side = Vector((-toward_hub.y, toward_hub.x, 0.0))
         foot = summit + toward_hub * (2.1 * s_along)
-        n = 28
+        n = 40
         points = []
         phase = rng.uniform(0.0, math.tau)
         for k in range(n):

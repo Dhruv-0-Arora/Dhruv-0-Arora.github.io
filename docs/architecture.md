@@ -48,6 +48,8 @@ Nothing in tracked files may depend on them.
 |---|---|
 | `controls/railPath.ts` | arc-length rail, eased look targets |
 | `controls/dragLook.ts` | click-and-drag look offset with coasting and recentering |
+| `controls/devCamera.ts` | development-only fixed camera from `?cam=&at=&fov=` |
+| `world/terrain/terrainField.ts` | treeline and forest weight, mirrored in the terrain shader |
 | `controls/driveController.ts` | fixed 120 Hz substeps, circle-vs-AABB push-out, ground follow |
 | `proximity/proximity.ts` | one active zone, 1.25r exit hysteresis, handover to a closer overlapping zone |
 | `theme/palette.ts`, `retint.ts`, `oklab.ts` | CSS color parsing, material-name binding, lerped repaint, Oklab gradients |
@@ -58,10 +60,16 @@ Nothing in tracked files may depend on them.
 
 `src/simulator/world/instancing/` holds one component per repetitive or animated field, anchored on a zone, a route or a loaded district from `meta.json`.
 Bamboo grove on `dirnt`, hex map on `cypher`, camera frusta on `altigoz`, candlesticks on `kerms` and `imc-prosperity-4`.
-On the backdrop: `Climbers` (rope teams walking `meta.routes`, pure path math in `climbPath.ts`) and `Conifers` (trees scattered on the loaded range's forest-band triangles).
+On the backdrop: `Climbers` (rope teams walking `meta.routes`, pure path math in `climbPath.ts`) and `Conifers` (trees scattered over the loaded range in proportion to the terrain field's forest weight).
 At the hub: `HubOrrery` (a ring per district, an orb per project) and `PhotoCarousel` (six frames fed by `src/content/gallery.ts`).
 `ZoneScreen` hangs a 16:9 panel at the zones listed in `world/zoneScreens.ts`; `mediaSurface.ts` paints its placeholder and swaps in a photo or a looping video.
 They derive per-instance colors from the palette in the store, so they follow the theme like authored materials.
+
+## Terrain shading
+
+`world/terrain/terrainShader.ts` patches the range's `tok.rock` material: per fragment it derives snow, glacier ice, rock strata, scree, meadow and forest floor from world height, slope, sun aspect and hash noise, lowers roughness on snow, and bends the normal with a fine bump.
+`world/terrain/terrainField.ts` is the CPU mirror of the treeline and forest weight, used by `Conifers` and the tests.
+`world/terrain/Terrain.tsx` attaches the patch to the loaded backdrop and lerps the snow, forest and meadow uniforms from the palette on the retint clock.
 
 ## Sky, sun and shadows
 
