@@ -2,7 +2,7 @@
 
 Asserts the authoring contract in ``assets/blender/contract.json``:
 collection layout, object naming, material whitelist, required objects,
-rail and zone metadata, and per-district / per-installation triangle budgets.
+rail, zone and terrace metadata, and per-district / per-installation triangle budgets.
 
 Usable three ways:
 
@@ -76,6 +76,9 @@ RAIL_LOOK = re.compile(r"^rail\.look\.\d{2}$")
 ZONE_OBJECT = re.compile(rf"^zone\.(?P<slug>{SLUG})$")
 ROUTE_OBJECT = re.compile(rf"^route\.(?P<slug>{SLUG})$")
 TRAIL_OBJECT = re.compile(rf"^trail\.(?P<slug>{SLUG})$")
+# Terraces are the flat sites cut into the range, one per contract zone
+# (the hub included): an empty at the terrace centre with a 'radius' prop.
+TERRACE_OBJECT = re.compile(rf"^terrace\.(?P<slug>{SLUG})$")
 # Lakes are district meshes with the installation name 'lake'; the runtime
 # reads their center and radius from meta and paints the water surface.
 LAKE_OBJECT = re.compile(rf"^(?P<district>{SLUG})\.lake\.(?P<slug>{SLUG})$")
@@ -215,6 +218,7 @@ def lint(scene: bpy.types.Scene | None = None, contract: dict | None = None) -> 
     # Rails and zones.
     col = found.get("_rails")
     zones_found: set[str] = set()
+    terraces_found: set[str] = set()
     if col is not None:
         for obj in collection_objects(col):
             if RAIL_PATH.match(obj.name):
@@ -236,6 +240,14 @@ def lint(scene: bpy.types.Scene | None = None, contract: dict | None = None) -> 
                 radius = obj.get("radius")
                 if not isinstance(radius, (int, float)) or float(radius) <= 0:
                     report.error(f"'{obj.name}' needs a custom property 'radius' > 0")
+            elif TERRACE_OBJECT.match(obj.name):
+                slug = TERRACE_OBJECT.match(obj.name).group("slug")
+                terraces_found.add(slug)
+                if slug not in contract["zones"]:
+                    report.error(f"'{obj.name}' is not a contract zone")
+                radius = obj.get("radius")
+                if not isinstance(radius, (int, float)) or float(radius) <= 0:
+                    report.error(f"'{obj.name}' needs a custom property 'radius' > 0")
             elif ROUTE_OBJECT.match(obj.name) or TRAIL_OBJECT.match(obj.name):
                 # Climbing routes and hiking trails: polylines the runtime
                 # follows (climbers) or paints onto the terrain (trails).
@@ -247,7 +259,8 @@ def lint(scene: bpy.types.Scene | None = None, contract: dict | None = None) -> 
                     report.error(f"'{obj.name}' needs at least two points")
             else:
                 report.error(
-                    f"'{obj.name}' in {cols['rails']}: expected 'rail.path', 'rail.look.NN', 'zone.<slug>', 'route.<slug>' or 'trail.<slug>'"
+                    f"'{obj.name}' in {cols['rails']}: expected 'rail.path', 'rail.look.NN', 'zone.<slug>', "
+                    "'terrace.<slug>', 'route.<slug>' or 'trail.<slug>'"
                 )
 
     for name in contract["requiredObjects"]:
@@ -256,6 +269,8 @@ def lint(scene: bpy.types.Scene | None = None, contract: dict | None = None) -> 
     for slug in contract["zones"]:
         if slug not in zones_found:
             report.error(f"zone 'zone.{slug}' is missing")
+        if slug not in terraces_found:
+            report.error(f"terrace 'terrace.{slug}' is missing")
 
     return report
 

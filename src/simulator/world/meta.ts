@@ -39,10 +39,26 @@ export interface TrailMeta {
   points: Vec3[];
 }
 
+/**
+ * A flat site cut into the range: every zone, the hub included, sits on
+ * one. Trees keep clear of it; the terrain is flat inside `radius`.
+ */
+export interface TerraceMeta {
+  slug: ZoneSlug;
+  center: Vec3;
+  radius: number;
+}
+
+/**
+ * A box the vehicle cannot enter: centre and half extents in world Y-up
+ * metres, turned by `yaw` about +Y (installations face the hub, so their
+ * walls are rarely axis-aligned).
+ */
 export interface BoxColliderMeta {
   name: string;
-  min: Vec3;
-  max: Vec3;
+  center: Vec3;
+  half: Vec3;
+  yaw: number;
 }
 
 export interface WorldMeta {
@@ -53,6 +69,7 @@ export interface WorldMeta {
   routes: RouteMeta[];
   lakes: LakeMeta[];
   trails: TrailMeta[];
+  terraces: TerraceMeta[];
   colliders: BoxColliderMeta[];
   bounds: { min: Vec3; max: Vec3 };
 }
@@ -150,14 +167,40 @@ export function validateWorldMeta(input: unknown): string[] {
     }
   }
 
+  if (!Array.isArray(meta.terraces)) {
+    errors.push("terraces must be an array");
+  } else {
+    const seen = new Set<string>();
+    for (const terrace of meta.terraces) {
+      const slug = String(terrace.slug);
+      if (!isZoneSlug(terrace.slug)) {
+        errors.push(`terrace '${slug}' is not a contract zone`);
+      }
+      if (seen.has(slug)) errors.push(`terrace '${slug}' is duplicated`);
+      seen.add(slug);
+      if (!isVec3(terrace.center)) {
+        errors.push(`terrace '${slug}' has a bad center`);
+      }
+      if (!(typeof terrace.radius === "number" && terrace.radius > 0)) {
+        errors.push(`terrace '${slug}' needs radius > 0`);
+      }
+    }
+    for (const slug of contract.zones) {
+      if (!seen.has(slug)) errors.push(`terrace '${slug}' is missing`);
+    }
+  }
+
   if (!Array.isArray(meta.colliders)) {
     errors.push("colliders must be an array");
   } else {
     for (const box of meta.colliders) {
-      if (!isVec3(box.min) || !isVec3(box.max)) {
+      if (!isVec3(box.center) || !isVec3(box.half)) {
         errors.push(`collider '${String(box.name)}' has bad bounds`);
-      } else if (box.min.some((v, i) => v > box.max[i])) {
-        errors.push(`collider '${box.name}' has min > max`);
+      } else if (box.half.some((v) => v <= 0)) {
+        errors.push(`collider '${box.name}' has a non-positive extent`);
+      }
+      if (!Number.isFinite(box.yaw)) {
+        errors.push(`collider '${String(box.name)}' has a bad yaw`);
       }
     }
   }

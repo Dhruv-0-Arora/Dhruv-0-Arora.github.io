@@ -128,6 +128,7 @@ def build(contract: dict) -> None:
 
     for i, slug in enumerate(contract["zones"]):
         empty(f"zone.{slug}", (-150.0 + i * 25.0, 20.0, 0.0), sub[cols["rails"]], radius=10.0)
+        empty(f"terrace.{slug}", (-150.0 + i * 25.0, 20.0, 0.0), sub[cols["rails"]], radius=12.0)
 
 
 def main() -> None:

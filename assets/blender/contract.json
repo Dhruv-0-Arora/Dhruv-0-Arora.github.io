@@ -67,7 +67,7 @@
     "hub"
   ],
   "requiredObjects": ["rail.path", "col.ground"],
-  "world": { "sizeMeters": 400, "cullDistanceMeters": 320 },
+  "world": { "radiusMeters": 470, "cullDistanceMeters": 800 },
   "budgets": {
     "tris": {
       "districts": {
@@ -76,17 +76,17 @@
         "evidence": 45000,
         "fabrication": 70000,
         "redacted": 5000,
-        "backdrop": 150000
+        "backdrop": 220000
       },
       "installations": {
         "astute": 25000,
         "keyboard": 20000,
         "pcb": 30000,
         "frc": 30000,
-        "range": 150000
+        "range": 220000
       },
       "installationDefault": 15000,
-      "authoredTotal": 360000,
+      "authoredTotal": 420000,
       "instancedTotal": 250000,
       "dozer": 50000,
       "ceiling": 500000
@@ -98,10 +98,10 @@
         "evidence": 900000,
         "fabrication": 1200000,
         "redacted": 100000,
-        "backdrop": 900000
+        "backdrop": 1400000
       },
-      "totalSoft": 4500000,
-      "totalHard": 5500000
+      "totalSoft": 5000000,
+      "totalHard": 6000000
     }
   }
 }

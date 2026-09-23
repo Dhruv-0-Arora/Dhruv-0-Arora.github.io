@@ -96,7 +96,7 @@ export interface Contract {
     gradients: readonly string[];
   };
   requiredObjects: readonly string[];
-  world: { sizeMeters: number; cullDistanceMeters: number };
+  world: { radiusMeters: number; cullDistanceMeters: number };
   budgets: { tris: TriBudgets; bytes: ByteBudgets };
 }
 

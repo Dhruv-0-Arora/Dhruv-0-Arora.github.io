@@ -41,7 +41,14 @@ function validMeta(): WorldMeta {
         ],
       },
     ],
-    colliders: [{ name: "col.box.plinth", min: [-1, 0, -1], max: [1, 2, 1] }],
+    terraces: contract.zones.map((slug, i) => ({
+      slug,
+      center: [i * 10, 2, 0],
+      radius: 12,
+    })),
+    colliders: [
+      { name: "col.box.plinth", center: [0, 1, 0], half: [1, 1, 1], yaw: 0.3 },
+    ],
     bounds: { min: [-200, 0, -200], max: [200, 50, 200] },
   };
 }
@@ -180,11 +187,33 @@ describe("validateWorldMeta", () => {
     expect(validateWorldMeta(meta)).toContain("lakes must be an array");
   });
 
-  it("rejects inverted collider boxes", () => {
+  it("requires one terrace per contract zone with a center and a radius", () => {
     const meta = validMeta();
-    meta.colliders[0].min = [2, 0, 0];
+    const removed = meta.terraces.pop();
+    meta.terraces.push({ ...meta.terraces[0] });
+    meta.terraces[1].radius = -1;
+    meta.terraces[2].center = [0, Number.NaN, 0];
+    (meta.terraces[3] as { slug: string }).slug = "plateau";
+    const errors = validateWorldMeta(meta);
+    const [first, second, third] = meta.terraces;
+    expect(errors).toContain(`terrace '${removed?.slug}' is missing`);
+    expect(errors).toContain(`terrace '${first.slug}' is duplicated`);
+    expect(errors).toContain(`terrace '${second.slug}' needs radius > 0`);
+    expect(errors).toContain(`terrace '${third.slug}' has a bad center`);
+    expect(errors).toContain("terrace 'plateau' is not a contract zone");
+    (meta as { terraces: unknown }).terraces = undefined;
+    expect(validateWorldMeta(meta)).toContain("terraces must be an array");
+  });
+
+  it("rejects collider boxes with no extent or a bad yaw", () => {
+    const meta = validMeta();
+    meta.colliders[0].half = [2, 0, 1];
     expect(validateWorldMeta(meta)).toContain(
-      "collider 'col.box.plinth' has min > max",
+      "collider 'col.box.plinth' has a non-positive extent",
+    );
+    meta.colliders[0].yaw = Number.NaN;
+    expect(validateWorldMeta(meta)).toContain(
+      "collider 'col.box.plinth' has a bad yaw",
     );
   });
 

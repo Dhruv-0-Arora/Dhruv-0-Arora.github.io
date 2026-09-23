@@ -7,9 +7,10 @@ Writes to ``<dir>``:
 
 * ``<district>.glb`` for every district in the contract (Y-up, materials by name,
   no textures, modifiers applied). ``shared.glb`` also carries ``col.ground``.
-* ``meta.json``: the rail polyline, look targets, zones, climbing routes,
-  hiking trails, lakes and box colliders, converted to the same Y-up frame
-  as the glbs, plus the drivable bounds (the AABB of ``col.ground``).
+* ``meta.json``: the rail polyline, look targets, zones, terraces, climbing
+  routes, hiking trails, lakes and oriented box colliders, converted to the same
+  Y-up frame as the glbs, plus the world's bounds (the AABB of every
+  exported mesh, which is the terrain disc).
 * ``lint.json``: the lint report, including per-district triangle counts.
 
 Refuses to export a scene that fails ``lint_scene.py``.
@@ -130,6 +131,28 @@ def world_aabb(obj: bpy.types.Object) -> tuple[list[float], list[float]]:
     return lo, hi
 
 
+def oriented_box(obj: bpy.types.Object) -> dict:
+    """A box collider as centre, half extents and yaw in the Y-up frame.
+    Installations are turned to face the hub, so a world-aligned box round
+    a turned wall would bulge far past it; the runtime tests the vehicle
+    against the box in its own frame instead. Yaw is the object's rotation
+    about Blender +Z, which is the same angle about glTF +Y."""
+    center = obj.matrix_world.translation
+    scale = obj.matrix_world.to_scale()
+    if obj.type == "EMPTY":
+        half = [obj.empty_display_size * abs(scale[i]) for i in range(3)]
+    else:
+        corners = [Vector(c) for c in obj.bound_box]
+        half = [abs(scale[i]) * (max(c[i] for c in corners) - min(c[i] for c in corners)) / 2 for i in range(3)]
+    yaw = obj.matrix_world.to_euler("XYZ").z
+    return {
+        "name": obj.name,
+        "center": yup(center),
+        "half": [round(half[0], 4), round(half[2], 4), round(half[1], 4)],
+        "yaw": round(yaw, 5),
+    }
+
+
 def build_meta(contract: dict) -> dict:
     cols = contract["collections"]
     root = bpy.data.collections[cols["root"]]
@@ -143,6 +166,7 @@ def build_meta(contract: dict) -> dict:
     zones = []
     routes = []
     trails = []
+    terraces = []
     for obj in lint_scene.collection_objects(rails):
         if lint_scene.RAIL_LOOK.match(obj.name):
             position = yup(obj.matrix_world.translation)
@@ -160,10 +184,19 @@ def build_meta(contract: dict) -> dict:
             routes.append({"slug": obj.name.split(".", 1)[1], "points": rail_points(obj)})
         elif lint_scene.TRAIL_OBJECT.match(obj.name):
             trails.append({"slug": obj.name.split(".", 1)[1], "points": rail_points(obj)})
+        elif lint_scene.TERRACE_OBJECT.match(obj.name):
+            terraces.append(
+                {
+                    "slug": obj.name.split(".", 1)[1],
+                    "center": yup(obj.matrix_world.translation),
+                    "radius": float(obj["radius"]),
+                }
+            )
     looks.sort(key=lambda l: l["t"])
     zones.sort(key=lambda z: z["slug"])
     routes.sort(key=lambda r: r["slug"])
     trails.sort(key=lambda r: r["slug"])
+    terraces.sort(key=lambda t: t["slug"])
 
     # Lakes: flat discs in a district; center and radius in world space.
     lakes = []
@@ -187,13 +220,18 @@ def build_meta(contract: dict) -> dict:
     for obj in lint_scene.collection_objects(colliders):
         if obj.name == "col.ground":
             continue
-        lo, hi = world_aabb(obj)
-        boxes.append({"name": obj.name, "min": lo, "max": hi})
+        boxes.append(oriented_box(obj))
     boxes.sort(key=lambda b: b["name"])
 
-    # Bounds are the drivable world, not the visible one: the Dozer is clamped
-    # to them, and backdrop geometry far beyond the plate must not widen them.
-    lo, hi = world_aabb(bpy.data.objects["col.ground"])
+    # Bounds are the whole world: the terrain disc contains everything else,
+    # and off it the ground query answers null, so the Dozer's clamp can be
+    # this generous.
+    meshes = [bpy.data.objects["col.ground"]]
+    for district_col in cols["districts"].values():
+        meshes += [o for o in lint_scene.collection_objects(root.children[district_col]) if o.type == "MESH"]
+    boxes_lo_hi = [world_aabb(o) for o in meshes]
+    lo = [min(b[0][i] for b in boxes_lo_hi) for i in range(3)]
+    hi = [max(b[1][i] for b in boxes_lo_hi) for i in range(3)]
 
     return {
         "version": contract["version"],
@@ -203,6 +241,7 @@ def build_meta(contract: dict) -> dict:
         "routes": routes,
         "lakes": lakes,
         "trails": trails,
+        "terraces": terraces,
         "colliders": boxes,
         "bounds": {"min": lo, "max": hi},
     }
@@ -237,7 +276,7 @@ def main() -> None:
     print(
         f"meta: {len(meta['rail']['points'])} rail points, {len(meta['looks'])} looks, "
         f"{len(meta['zones'])} zones, {len(meta['routes'])} routes, {len(meta['lakes'])} lakes, "
-        f"{len(meta['trails'])} trails, {len(meta['colliders'])} colliders"
+        f"{len(meta['trails'])} trails, {len(meta['terraces'])} terraces, {len(meta['colliders'])} colliders"
     )
 
 

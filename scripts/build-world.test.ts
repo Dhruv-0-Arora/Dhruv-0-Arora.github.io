@@ -80,10 +80,14 @@ describe.skipIf(!hasBlender)("world pipeline (Blender)", () => {
     expect(meta.trails.map((t) => [t.slug, t.points.length])).toEqual([
       ["tarn", 3],
     ]);
-    // Bounds are the drivable ground, not the tallest mesh: the fixture's
-    // col.ground is a 400 m plane at z = 0, which in Y-up is y = 0.
+    expect(meta.terraces.map((t) => t.slug)).toEqual(
+      [...meta.zones.map((z) => z.slug)].sort(),
+    );
+    expect(meta.terraces.every((t) => t.radius === 12)).toBe(true);
+    // Bounds are the whole exported world: the fixture's 400 m col.ground
+    // plane sets x and z, the tallest mesh (the astute node at 4.5 m) sets y.
     expect(meta.bounds.min.map(Math.round)).toEqual([-200, 0, -200]);
-    expect(meta.bounds.max.map(Math.round)).toEqual([200, 0, 200]);
+    expect(meta.bounds.max.map(Math.round)).toEqual([200, 5, 200]);
 
     const stats = {} as WorldStats;
     for (const district of DISTRICTS) {
