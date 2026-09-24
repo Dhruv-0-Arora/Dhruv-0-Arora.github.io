@@ -5,8 +5,8 @@ import type { LakeMeta, TrailMeta } from "../meta.ts";
  * A polar mask of the range's trails and lake shores, rasterized once from
  * `meta.trails` and `meta.lakes`, that the terrain shader samples per pixel
  * and the conifer scatter reads on the CPU. Theta runs across the texture
- * and wraps; rho runs down it from the backdrop's inner edge to its rim,
- * so a texel is about a metre in either direction at the lakes.
+ * and wraps; rho runs down it from the hub to the rim of the terrain disc,
+ * so a texel is about a metre in either direction out at the sites.
  *
  * Red is the beaten tread, green the gravel shore. The mapping here and
  * `trailUv` in the shader must agree, which is why both come from
@@ -14,10 +14,10 @@ import type { LakeMeta, TrailMeta } from "../meta.ts";
  */
 
 export const TRAIL_MAP = {
-  inner: 205,
+  inner: 0,
   outer: 470,
   width: 2048,
-  height: 256,
+  height: 512,
 } as const;
 
 /** Full width of the tread and the soft margin beyond it, in metres. */
@@ -83,9 +83,16 @@ export function buildTrailMask(
     const rho = Math.hypot(x, z);
     if (rho + radius < inner || rho - radius > outer) return;
     const theta = Math.atan2(z, x);
-    const dTheta = radius / Math.max(rho - radius, 1);
-    const i0 = Math.floor(((theta - dTheta) / TWO_PI + 0.5) * width);
-    const i1 = Math.ceil(((theta + dTheta) / TWO_PI + 0.5) * width);
+    // Angular half-width of the splat; a splat over or near the centre
+    // spans every column (the texture's top rows all meet at the hub).
+    const near = rho - radius;
+    const dTheta = near > 0 ? Math.asin(Math.min(1, radius / rho)) : Math.PI;
+    let i0 = Math.floor(((theta - dTheta) / TWO_PI + 0.5) * width);
+    let i1 = Math.ceil(((theta + dTheta) / TWO_PI + 0.5) * width);
+    if (i1 - i0 >= width) {
+      i0 = 0;
+      i1 = width - 1;
+    }
     const j0 = Math.max(
       0,
       Math.floor(((rho - radius - inner) / span) * height),

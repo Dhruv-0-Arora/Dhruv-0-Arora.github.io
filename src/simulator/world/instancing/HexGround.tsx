@@ -11,7 +11,6 @@ import {
 import type { ZoneMeta } from "../meta.ts";
 import { type HexCell, hexLayout } from "./hexGrid.ts";
 
-export const FIELD_SIZE = 150;
 export const HEX_RADIUS = 1.55;
 const HEX_HEIGHT = 0.22;
 const GAP = 0.9;
@@ -24,14 +23,23 @@ interface HexGroundProps {
 }
 
 /**
- * Cypher's map as the Evidence district floor: ~3,400 instanced hex prisms
- * colored green to red by risk, faded by confidence, in one draw call.
+ * Cypher's map as the floor of its terrace: instanced hex prisms (about
+ * 800 on an 80 m site) colored green to red by risk, faded by confidence,
+ * in one draw call. The field spans the zone's diameter and is cut round
+ * to sit on the round terrace.
  * The cells under the camera aim (on rails) or the Dozer brighten, like
  * the map reacting to where you look.
  */
 export function HexGround({ zone, onMount }: HexGroundProps) {
   const palette = useSim((s) => s.palette);
-  const cells = useMemo(() => hexLayout(FIELD_SIZE, HEX_RADIUS), []);
+  const size = zone.radius * 2;
+  const cells = useMemo(
+    () =>
+      hexLayout(size, HEX_RADIUS).filter(
+        (c) => Math.hypot(c.x, c.z) <= size / 2 - HEX_RADIUS,
+      ),
+    [size],
+  );
   const base = useRef<Float32Array>(new Float32Array(0));
   const lit = useRef(new Set<number>());
 
@@ -107,8 +115,8 @@ export function HexGround({ zone, onMount }: HexGroundProps) {
     const px = probe[0] - zone.position[0];
     const pz = probe[2] - zone.position[2];
     if (
-      Math.abs(px) > FIELD_SIZE / 2 + GLOW_RADIUS ||
-      Math.abs(pz) > FIELD_SIZE / 2 + GLOW_RADIUS
+      Math.abs(px) > size / 2 + GLOW_RADIUS ||
+      Math.abs(pz) > size / 2 + GLOW_RADIUS
     ) {
       if (lit.current.size === 0) return;
     }

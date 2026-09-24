@@ -81,9 +81,34 @@ describe("trailMask", () => {
     expect(mask.inLake(280 + 30 * 1.5, 0, 2)).toBe(true);
   });
 
-  it("reads nothing off the ring", () => {
+  it("reads nothing off the disc", () => {
     const mask = buildTrailMask([], [lake]);
     expect(mask.trailAt(0, 0)).toBe(0);
     expect(mask.shoreAt(600, 0)).toBe(0);
+    expect(mask.trailAt(600, 0)).toBe(0);
+  });
+
+  it("covers the whole disc, through the hub, at about a metre a texel", () => {
+    expect((TRAIL_MAP.outer - TRAIL_MAP.inner) / TRAIL_MAP.height).toBeLessThan(
+      1.0,
+    );
+    expect((2 * Math.PI * 300) / TRAIL_MAP.width).toBeLessThan(1.0);
+    const mask = buildTrailMask(
+      [
+        {
+          slug: "spoke",
+          points: [
+            [-60, 0, 0],
+            [60, 0, 0],
+          ],
+        },
+      ],
+      [],
+    );
+    expect(mask.trailAt(0, 0)).toBeGreaterThan(0.9);
+    expect(mask.trailAt(-30, 0.5)).toBeGreaterThan(0.9);
+    expect(mask.trailAt(30, -0.5)).toBeGreaterThan(0.9);
+    expect(mask.trailAt(0, 8)).toBe(0);
+    expect(mask.data.every((v) => Number.isFinite(v))).toBe(true);
   });
 });

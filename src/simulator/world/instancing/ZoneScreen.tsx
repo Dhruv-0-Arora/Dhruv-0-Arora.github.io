@@ -3,7 +3,7 @@ import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { useSim } from "../../simStore.ts";
-import type { ZoneMeta } from "../meta.ts";
+import type { Vec3, ZoneMeta } from "../meta.ts";
 import type { ZoneScreenSpec } from "../zoneScreens.ts";
 import { MediaSurface } from "./mediaSurface.ts";
 
@@ -38,6 +38,8 @@ export function accentStrip(w: number, h: number): THREE.BufferGeometry {
 interface ZoneScreenProps {
   zone: ZoneMeta;
   spec: ZoneScreenSpec;
+  /** The screen yaws to face this point: where the rail passes the zone. */
+  faceToward: Vec3;
   onMount?: (group: THREE.Group, center: THREE.Vector3) => void;
 }
 
@@ -45,7 +47,12 @@ interface ZoneScreenProps {
  * A floating screen beside an installation: a framed 16:9 panel that bobs
  * gently, faces the rail, and plays the project's clip when one is set.
  */
-export function ZoneScreen({ zone, spec, onMount }: ZoneScreenProps) {
+export function ZoneScreen({
+  zone,
+  spec,
+  faceToward,
+  onMount,
+}: ZoneScreenProps) {
   const palette = useSim((s) => s.palette);
   const reducedMotion = useSim((s) => s.reducedMotion);
   const [w, h] = spec.size;
@@ -81,11 +88,11 @@ export function ZoneScreen({ zone, spec, onMount }: ZoneScreenProps) {
     );
     group.position.copy(base);
     group.rotation.y = Math.atan2(
-      spec.faceToward[0] - base.x,
-      spec.faceToward[2] - base.z,
+      faceToward[0] - base.x,
+      faceToward[2] - base.z,
     );
     return { surface, panel, back, bars, strip, group, base };
-  }, [w, h, spec, zone]);
+  }, [w, h, spec, zone, faceToward]);
 
   useEffect(() => {
     parts.surface.setSource(spec.src);

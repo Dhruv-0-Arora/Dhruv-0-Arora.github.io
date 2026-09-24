@@ -4,7 +4,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { useSim } from "../../simStore.ts";
 import { forestWeight } from "../terrain/terrainField.ts";
 
-const MAX_TREES = 9000;
+export const MAX_TREES = 12000;
 /** Square meters of fully forested slope per tree. */
 const AREA_PER_TREE = 34;
 const TREE_H = 5.2;
@@ -24,11 +24,14 @@ interface Tree {
  * center, at random barycentric points, so the trees stand exactly where
  * the shader paints forest floor. Seeded, so the forest is the same on
  * every visit. `exclude` vetoes a spot (a trail, a lake) after the random
- * draw, so the rest of the forest does not shift when it changes.
+ * draw, so the rest of the forest does not shift when it changes. Past
+ * `MAX_TREES` the forest is thinned evenly across the whole range rather
+ * than cut off wherever the triangle order happens to reach the cap.
  */
 export function scatterTrees(
   backdrop: THREE.Object3D,
   exclude?: (x: number, z: number) => boolean,
+  max = MAX_TREES,
 ): Tree[] {
   let s = 61;
   const rand = () => {
@@ -50,7 +53,7 @@ export function scatterTrees(
     const index = geo.getIndex();
     const count = index ? index.count : pos.count;
     const at = (i: number) => (index ? index.getX(i) : i);
-    for (let i = 0; i + 2 < count && trees.length < MAX_TREES; i += 3) {
+    for (let i = 0; i + 2 < count; i += 3) {
       a.fromBufferAttribute(pos, at(i)).applyMatrix4(obj.matrixWorld);
       b.fromBufferAttribute(pos, at(i + 1)).applyMatrix4(obj.matrixWorld);
       c.fromBufferAttribute(pos, at(i + 2)).applyMatrix4(obj.matrixWorld);
@@ -87,7 +90,12 @@ export function scatterTrees(
       }
     }
   });
-  return trees;
+  if (trees.length <= max) return trees;
+  const kept: Tree[] = [];
+  for (let i = 0; i < max; i++) {
+    kept.push(trees[Math.floor((i * trees.length) / max)]);
+  }
+  return kept;
 }
 
 /** A fir: two stacked crowns over a short trunk, open at the base. */
