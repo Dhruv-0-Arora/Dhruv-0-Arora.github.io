@@ -7,15 +7,20 @@ colliders) on top of the earlier sessions:
         --python assets/blender/scripts/sessions/05_shared_redacted.py -- \
         --save assets/blender/world.blend
 
-* Shared: the hub plaza gets an inlay ring, radial guides toward each road,
-  curbs along the roads, and a pair of gate pylons where each road enters
-  its district. The spawn pad is where the Dozer waits. Topographic contour
-  rings and a chevron loop mark the plaza; the runtime hangs the photo
-  carousel and hangs the Flyer above it. ``zone.hub`` lets the overlay
-  show the how-to guide at spawn.
+* Shared: the hub is the flat pad at the origin (``HUB_PAD_RADIUS``, cut
+  by session 01; the terrain is the ground, so there is no ground plane).
+  The plaza gets an inlay ring, a spawn pad where the Dozer waits, and
+  four radial guides pointing down the hiking trails that leave the pad
+  toward the gateway sites. Topographic contour rings and a chevron loop
+  mark the plaza. On the south edge of the pad, beside the rail at
+  ``rangelib.HUB_STATION``, a low station platform is where the visitor
+  boards the train. Nothing else stands on the pad: the runtime hangs the
+  Flyer and the photo carousel there. ``zone.hub`` lets the overlay show
+  the how-to guide at spawn.
 * Redacted: one sealed block, chamfered, with a single seal band and a
-  ring of bollards. Nothing else, by design: the confidentiality rule is
-  the installation. No text, no windows, no door.
+  ring of bollards, built at local (0, 0) and placed on the
+  swiftlabs-platform terrace facing the hub. Nothing else, by design: the
+  confidentiality rule is the installation. No text, no windows, no door.
 """
 
 from __future__ import annotations
@@ -25,18 +30,25 @@ import os
 import sys
 
 import bpy
+from mathutils import Vector
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-from worldlib import CENTERS, HUB, World, polar, save, session_args  # noqa: E402
+import rangelib as R  # noqa: E402
+from worldlib import HUB, World, polar, save, session_args  # noqa: E402
 
-ROAD_W = 8.0
+REDACTED = "swiftlabs-platform"
+REDACTED_BLOCK = 22.0  # side of the sealed block, m
+
+STATION_LEN = 14.0
+STATION_DEPTH = 3.0
+STATION_GAP = 1.4  # curb face to rail centreline; the cars are 1.7 m wide
+STATION_SKIRT = 0.4  # how far the platform and curb reach below the pad level
+STATION_TRAIN_MID = 3.25  # the waiting train's middle, behind the seat along the rail
 
 
 def build_shared(w: World) -> None:
     col = w.by_district["shared"]
-    size = w.contract["world"]["sizeMeters"]
-    w.plane("shared.ground.base", col, (0, 0, 0), (size, size), "tok.bg")
     w.cylinder("shared.hub.ring", col, (0, 0, 0.15), 19.0, 0.3, "tok.accent", verts=48)
     w.cylinder("shared.hub.plaza", col, (0, 0, 0.3), 18.0, 0.6, "tok.surface", verts=48, drivable=True)
     w.cylinder("shared.hub.inlay", col, (0, 0, 0.62), 9.0, 0.06, "tok.surface-2", verts=48, drivable=True)
@@ -44,28 +56,62 @@ def build_shared(w: World) -> None:
     build_hub_marks(w, col)
     w.zone("hub", (0.0, 0.0))
 
-    for district, center in CENTERS.items():
-        d = center - HUB
+    # Radial guides on the plaza pointing down the four trail spokes.
+    for slug in R.GATEWAYS:
+        d = R.terrace_front(slug)
+        d.z = 0.0
+        d.normalize()
         yaw = math.atan2(d.y, d.x)
-        mid = HUB + d * 0.5
-        w.box(f"shared.road.{district}", col, (mid.x, mid.y, 0.05), (d.length, ROAD_W, 0.1), "tok.surface-2", yaw=yaw, drivable=True)
-        # Curbs along both edges, from the plaza rim to the district.
-        for side, s in (("l", 1.0), ("r", -1.0)):
-            nx, ny = -math.sin(yaw) * s * (ROAD_W / 2 + 0.2), math.cos(yaw) * s * (ROAD_W / 2 + 0.2)
-            start = HUB + d.normalized() * 19.5
-            end = center
-            cm = (start + end) * 0.5
-            w.box(f"shared.road.{district}.curb.{side}", col, (cm.x + nx, cm.y + ny, 0.12), ((end - start).length, 0.4, 0.24), "tok.border", yaw=yaw, drivable=True)
-        # Radial guide on the plaza pointing down the road.
-        g = HUB + d.normalized() * 13.5
-        w.box(f"shared.hub.guide.{district}", col, (g.x, g.y, 0.64), (9.0, 0.5, 0.05), "tok.border", yaw=yaw, drivable=True)
-        # Gate pylons at the district threshold.
-        gate = center - d.normalized() * 12.0
-        for side, s in (("l", 1.0), ("r", -1.0)):
-            px, py = gate.x - math.sin(yaw) * s * (ROAD_W / 2 + 1.6), gate.y + math.cos(yaw) * s * (ROAD_W / 2 + 1.6)
-            w.box(f"shared.gate.{district}.{side}", col, (px, py, 2.4), (0.8, 0.8, 4.8), "tok.text", yaw=yaw, bevel=0.08)
-            w.collider_box(f"gate-{district}-{side}", (px, py, 2.4), (0.8, 0.8, 4.8))
-        w.box(f"shared.gate.{district}.lintel", col, (gate.x, gate.y, 4.9), (0.5, ROAD_W + 4.0, 0.3), "tok.text", yaw=yaw)
+        g = HUB + d * 13.5
+        w.box(f"shared.hub.guide.{slug}", col, (g.x, g.y, 0.64), (9.0, 0.5, 0.05), "tok.border", yaw=yaw, drivable=True)
+
+    build_station(w, col)
+
+
+def rail_points() -> list[Vector]:
+    """The rail loop in world space. Session 01 starts the loop at the hub
+    station, so index 0 is t = 0, where the train waits."""
+    rail = bpy.data.objects["rail.path"]
+    return [rail.matrix_world @ p.co.xyz for p in rail.data.splines[0].points]
+
+
+def build_station(w: World, col) -> None:
+    """The boarding platform beside the rail at the hub station, with a low
+    curb along its rail side so the Dozer cannot roll onto the track.
+
+    The line leaves the station heading west and bends away south-west, so
+    it runs a few metres outside the pad rim rather than along it. The
+    platform follows the real track (read from ``rail.path``) instead of a
+    fixed spot: it is centred on the train as it waits at t = 0 (the cars
+    trail east of the seat), squared to the chord of the track along its
+    length and set in so the curb face keeps ``STATION_GAP`` from the rail
+    centreline at the nearest point. The ground there is the flat pad
+    shoulder, level with the pad to a few centimetres."""
+    pts = rail_points()
+    # Walk back (east, behind the seat) to the middle of the waiting train.
+    walked, centre = 0.0, pts[0]
+    for p in reversed(pts):
+        walked += (p.xy - centre.xy).length
+        centre = p
+        if walked >= STATION_TRAIN_MID:
+            break
+    span = [p for p in pts[-40:] + pts[:40] if (p.xy - centre.xy).length <= STATION_LEN / 2 + 1.0]
+    head, tail = span[-1].xy, span[0].xy
+    along = (head - tail).normalized()
+    yaw = math.atan2(along.y, along.x)
+    # The normal toward the hub, and how far the track bulges toward it.
+    n = Vector((-along.y, along.x))
+    if n.dot(-centre.xy) < 0:
+        n = -n
+    mid = (head + tail) * 0.5
+    reach = max((p.xy - mid).dot(n) for p in span)
+    face = mid + n * (reach + STATION_GAP)
+    curb = face + n * 0.15
+    deck = face + n * (0.3 + STATION_DEPTH / 2)
+    # Both run STATION_SKIRT below z = 0 so the shoulder dipping away past
+    # the pad rim never shows a gap under them.
+    w.box("shared.station.platform", col, (deck.x, deck.y, (0.5 - STATION_SKIRT) / 2), (STATION_LEN, STATION_DEPTH, 0.5 + STATION_SKIRT), "tok.surface", yaw=yaw, drivable=True)
+    w.box("shared.station.curb", col, (curb.x, curb.y, (0.7 - STATION_SKIRT) / 2), (STATION_LEN, 0.3, 0.7 + STATION_SKIRT), "tok.border", yaw=yaw)
 
 
 def build_hub_marks(w: World, col) -> None:
@@ -88,24 +134,26 @@ def build_hub_marks(w: World, col) -> None:
 
 
 def build_redacted(w: World) -> None:
+    """Built at local (0, 0) with its front on local -Y, then placed on the
+    terrace (radius 22) as one rigid body turned to face the hub."""
     col = w.by_district["redacted"]
-    c = CENTERS["redacted"]
-    w.box("redacted.building.plinth", col, (c.x, c.y, 0.25), (44.0, 44.0, 0.5), "tok.surface-2", drivable=True, bevel=0.15)
-    w.box("redacted.building.step", col, (c.x, c.y, 0.7), (34.0, 34.0, 0.4), "tok.border", drivable=True, bevel=0.1)
-    w.box("redacted.building.block", col, (c.x, c.y, 0.9 + 9.0), (30.0, 30.0, 18.0), "tok.on-accent", bevel=0.35)
-    w.box("redacted.building.seal", col, (c.x, c.y, 12.0), (30.4, 30.4, 0.5), "tok.text")
-    w.collider_box("redacted", (c.x, c.y, 9.9), (30.0, 30.0, 18.0))
+    w.box("redacted.building.plinth", col, (0, 0, 0.25), (32.0, 32.0, 0.5), "tok.surface-2", drivable=True, bevel=0.15)
+    w.box("redacted.building.step", col, (0, 0, 0.7), (26.0, 26.0, 0.4), "tok.border", drivable=True, bevel=0.1)
+    w.box("redacted.building.block", col, (0, 0, 0.9 + 8.0), (REDACTED_BLOCK, REDACTED_BLOCK, 16.0), "tok.on-accent", bevel=0.35)
+    w.box("redacted.building.seal", col, (0, 0, 10.5), (22.4, 22.4, 0.5), "tok.text")
     for i in range(20):
         a = i / 20 * math.tau
-        w.cylinder(f"redacted.bollard.{i:03d}", col, polar((c.x, c.y), 20.0, a, 0.5 + 0.45), 0.35, 0.9, "tok.muted", verts=10)
-    w.zone("swiftlabs-platform", (c.x, c.y))
-    w.camera("cam.review.redacted-close", (c.x + 34.0, c.y - 40.0, 16.0), (c.x, c.y, 8.0), lens=35.0)
+        w.cylinder(f"redacted.bollard.{i:03d}", col, polar((0.0, 0.0), 15.0, a, 0.5 + 0.45), 0.35, 0.9, "tok.muted", verts=10)
+    w.collider_box("redacted", (0.0, 0.0, 0.9 + 8.0), (REDACTED_BLOCK, REDACTED_BLOCK, 16.0))
+    w.zone(REDACTED, (0.0, 0.0))
+    T = w.place_site("redacted.", REDACTED, colliders=["redacted"], zones=[REDACTED])
+    w.review_camera("cam.review.redacted-close", T, (26.0, -32.0, 14.0), (0.0, 0.0, 7.0))
 
 
 def main() -> World:
     w = World()
-    w.wipe_district("shared", ["hub"], ["gate"])
-    w.wipe_district("redacted", ["swiftlabs-platform"], ["redacted"])
+    w.wipe_district("shared", ["hub"], [])
+    w.wipe_district("redacted", [REDACTED], ["redacted"])
     build_shared(w)
     build_redacted(w)
     w.rebuild_ground()

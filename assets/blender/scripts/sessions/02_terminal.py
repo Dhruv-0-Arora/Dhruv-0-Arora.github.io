@@ -7,6 +7,11 @@ Replaces ``World/Terminal`` plus its zones and colliders on top of session
         --python assets/blender/scripts/sessions/02_terminal.py -- \
         --save assets/blender/world.blend
 
+Each installation is built at a local origin (anchor (0, 0), floor at
+z = 0, front facing local -Y) and then placed on its site's terrace with
+``World.place``, turned so the front faces the hub and the rail. Every
+footprint fits inside its terrace radius (``rangelib.site_radius``).
+
 Installations, each a real artifact of the work:
 
 * astute monument: the graph TUI in 3D. Every node is a braille cell (the
@@ -15,7 +20,7 @@ Installations, each a real artifact of the work:
   struts. One bold focus node tops the mast.
 * stalk keyboard: his own 3x6 ortholinear split with thumb keys and an
   outer modifier column, beige base and green caps, at terrain scale with
-  ramps so the Dozer can drive over the keys.
+  ramps on the hub side so the Dozer can drive over the keys.
 * dirnt grove: the plot and stepping stones are authored; the bamboo
   itself is instanced at runtime on the zone.dirnt anchor, colored on the
   Oklab age gradient.
@@ -32,12 +37,18 @@ import bpy
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-from worldlib import CENTERS, World, polar, save, session_args  # noqa: E402
+from worldlib import World, polar, save, session_args  # noqa: E402
 
-C = CENTERS["terminal"]
-ASTUTE = (C.x, C.y + 10.0)
-KEYBOARD = (C.x - 10.0, C.y - 26.0)
-GROVE = (C.x + 35.0, C.y + 40.0)
+# Local build origins. Each installation is placed with its anchor at the
+# origin, so these are (0, 0) except the keyboard, which sits 1.5 m toward
+# the hub (local -Y) so its splayed outer corners stay on the terrace.
+ASTUTE = (0.0, 0.0)
+KEYBOARD = (0.0, -1.5)
+GROVE = (0.0, 0.0)
+# Half offset and base width: the splayed outer corners reach 26.7 m from
+# the anchor on a 26 m terrace, under the 1 m overhang the bank allows.
+KEYBOARD_HALF_X = 13.25
+KEYBOARD_BASE_W = 24.0
 
 # Braille cell geometry (meters): 2 columns x 3 rows of dots.
 DOT_R = 0.17
@@ -126,10 +137,11 @@ def build_keyboard(w: World, col) -> None:
     kx, ky = KEYBOARD
     for side, sign in (("left", -1.0), ("right", 1.0)):
         yaw = -sign * 0.14
-        ox, oy = kx + sign * 15.0, ky
+        ox, oy = kx + sign * KEYBOARD_HALF_X, ky
         base_z = 0.6
-        w.box(f"terminal.keyboard.{side}.base", col, (ox, oy, base_z), (25.0, 16.0, 1.2), "tok.surface-2", yaw=yaw, drivable=True, bevel=0.5)
-        # Ramp on the south side so the Dozer can climb onto the keys.
+        w.box(f"terminal.keyboard.{side}.base", col, (ox, oy, base_z), (KEYBOARD_BASE_W, 16.0, 1.2), "tok.surface-2", yaw=yaw, drivable=True, bevel=0.5)
+        # Ramp on the -Y side (the hub and the rail after placement) so the
+        # Dozer can climb onto the keys.
         ramp_len = 9.0
         rcx, rcy = ox, oy - 8.0 - ramp_len / 2 + 0.6
         ramp = w.box(f"terminal.keyboard.{side}.ramp", col, (rcx, rcy, base_z), (6.0, ramp_len, 0.25), "tok.surface-2", drivable=True)
@@ -157,7 +169,7 @@ def build_keyboard(w: World, col) -> None:
         keycap(w, col, f"terminal.keyboard.{side}.thumb.big", (tx - sign * 2.4, ty, z), 1.5, yaw, (ox, oy), mat="tok.hue-green-vivid")
         keycap(w, col, f"terminal.keyboard.{side}.thumb.small", (tx + sign * 1.8, ty - 0.6, z), 1.0, yaw, (ox, oy), mat="tok.hue-green-vivid")
 
-    w.zone("stalk", (kx, ky))
+    w.zone("stalk", (0.0, 0.0))
 
 
 def build_grove(w: World, col) -> None:
@@ -177,9 +189,13 @@ def build_terminal(w: World) -> None:
     build_astute(w, col)
     build_keyboard(w, col)
     build_grove(w, col)
-    w.camera("cam.review.terminal-astute", (ASTUTE[0] + 26.0, ASTUTE[1] - 34.0, 16.0), (ASTUTE[0], ASTUTE[1], 9.0), lens=35.0)
-    w.camera("cam.review.terminal-keyboard", (KEYBOARD[0] + 4.0, KEYBOARD[1] - 40.0, 22.0), (KEYBOARD[0], KEYBOARD[1], 1.5), lens=35.0)
-    w.camera("cam.review.terminal-grove", (GROVE[0] + 22.0, GROVE[1] - 26.0, 14.0), (GROVE[0], GROVE[1], 2.0), lens=35.0)
+    t_astute = w.place_site("terminal.astute.", "astute", colliders=["astute"], zones=["astute"])
+    t_keyboard = w.place_site("terminal.keyboard.", "stalk", zones=["stalk"])
+    t_grove = w.place_site("terminal.bamboo.", "dirnt", zones=["dirnt"])
+    # Review cameras in each installation's local frame, from the hub side.
+    w.review_camera("cam.review.terminal-astute", t_astute, (26.0, -34.0, 16.0), (0.0, 0.0, 9.0))
+    w.review_camera("cam.review.terminal-keyboard", t_keyboard, (0.0, -54.0, 30.0), (0.0, -1.5, 1.5), lens=28.0)
+    w.review_camera("cam.review.terminal-grove", t_grove, (22.0, -26.0, 14.0), (0.0, 0.0, 2.0))
 
 
 def main() -> World:

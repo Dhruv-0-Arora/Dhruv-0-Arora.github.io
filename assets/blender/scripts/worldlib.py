@@ -2,8 +2,9 @@
 
 Everything a session needs to add geometry that passes ``lint_scene.py``:
 contract materials with preview colors, primitive factories that land in
-the right collection, zone/collider helpers, review cameras, and the
-layout constants every district agrees on.
+the right collection, zone/collider helpers, review cameras, and
+``World.place``, which moves an installation onto its terrace in the range
+(``rangelib.py`` owns the ground and the site table).
 
 Frame: Blender Z-up, meters. ``export_world.py`` converts to glTF Y-up.
 """
@@ -15,70 +16,25 @@ import math
 import os
 
 import bpy
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CONTRACT_PATH = os.path.join(HERE, "..", "contract.json")
 
 # ---------------------------------------------------------------------------
-# Layout (Blender x, y). Hub at the origin; districts on a rough ring.
+# Layout. The ground, the sites and their terraces live in ``rangelib``;
+# the hub is the origin. Installations are authored at convenient local
+# coordinates (the old plate layout) and moved onto their terrace with
+# ``World.place``.
 # ---------------------------------------------------------------------------
 
 HUB = Vector((0.0, 0.0, 0.0))
-CENTERS = {
-    "terminal": Vector((-130.0, 20.0, 0.0)),
-    "redacted": Vector((-70.0, 140.0, 0.0)),
-    "evidence": Vector((110.0, 110.0, 0.0)),
-    "fabrication": Vector((110.0, -100.0, 0.0)),
-}
+HUB_PAD_RADIUS = 45.0
 
-# Closed rail loop: hub -> terminal -> redacted -> evidence -> fabrication -> hub.
-RAIL = [
-    (0.0, -40.0, 12.0),
-    (-70.0, -30.0, 14.0),
-    (-130.0, -25.0, 16.0),
-    (-165.0, 60.0, 18.0),
-    (-135.0, 125.0, 20.0),
-    (-70.0, 186.0, 24.0),
-    (0.0, 168.0, 22.0),
-    (95.0, 135.0, 18.0),
-    (155.0, 40.0, 18.0),
-    (148.0, -85.0, 27.0),
-    (70.0, -128.0, 15.0),
-]
-
-# (t along the loop, look-at point). t=None means "where the rail passes
-# closest to the point", computed by export_world.py, so aims are exact
-# when the camera is abeam of an installation. Only the hub pins t.
-LOOKS = [
-    (0.00, (0.0, 0.0, 2.0)),
-    (None, (-130.0, 30.0, 8.0)),  # astute monument
-    (None, (-140.0, -6.0, 2.0)),  # keyboard terrain
-    (None, (-95.0, 60.0, 3.0)),  # bamboo grove
-    (None, (-70.0, 140.0, 9.0)),  # redacted building
-    (None, (110.0, 125.0, 10.0)),  # nazar graph
-    (None, (110.0, 95.0, 1.0)),  # cypher hex field
-    (None, (102.0, -82.0, 12.0)),  # orion gantry
-    (None, (80.0, -60.0, 1.0)),  # frc field
-    (1.00, (0.0, 0.0, 2.0)),
-]
-
-ZONE_RADII = {
-    "astute": 22.0,
-    "stalk": 26.0,
-    "dirnt": 18.0,
-    "cypher": 40.0,
-    "altigoz": 20.0,
-    "nazar": 20.0,
-    "kerms": 14.0,
-    "imc-prosperity-4": 14.0,
-    "wisconsin-racing": 22.0,
-    "orion": 28.0,
-    "agentic-cad-spike": 14.0,
-    "synthesis": 20.0,
-    "swiftlabs-platform": 30.0,
-    "hub": 18.0,
-}
+# Zones share their site's terrace radius (``rangelib.site_radius``), so
+# the panel opens exactly where the installation is; the hub's is smaller
+# than its pad so the guide closes once the visitor drives off the plaza.
+ZONE_RADIUS_OVERRIDES = {"hub": 18.0}
 
 # Light-theme token values from src/index.css, only for viewport preview.
 # The runtime retints from CSS custom properties; the glb color is a fallback.
@@ -195,7 +151,8 @@ class World:
         purge_orphans()
 
     def wipe_district(self, district: str, zones: list[str], collider_prefixes: list[str]) -> None:
-        """Remove one district's meshes, its zones, and its box colliders."""
+        """Remove one district's meshes, its zones, its box colliders and its
+        review cameras (``cam.review.<district>-*``)."""
         for obj in list(collection_objects(self.by_district[district])):
             bpy.data.objects.remove(obj, do_unlink=True)
         for obj in list(self.rails.objects):
@@ -203,6 +160,9 @@ class World:
                 bpy.data.objects.remove(obj, do_unlink=True)
         for obj in list(self.colliders.objects):
             if any(obj.name.startswith(f"col.box.{p}") for p in collider_prefixes):
+                bpy.data.objects.remove(obj, do_unlink=True)
+        for obj in list(self.review.objects):
+            if obj.name.startswith(f"cam.review.{district}-"):
                 bpy.data.objects.remove(obj, do_unlink=True)
         purge_orphans()
 
@@ -220,16 +180,19 @@ class World:
         return obj
 
     def box(self, name, col, center, size, mat, yaw=0.0, drivable=False, bevel=0.0):
+        """A box of ``size`` metres. The size is baked into the mesh rather
+        than left as object scale, so a bevel is an absolute width on every
+        edge (a bevel applied under a non-uniform scale stretches into a
+        chamfer as long as the box's longest side) and joins and exports see
+        plain unit-scale objects."""
         bpy.ops.mesh.primitive_cube_add(size=1.0, location=center)
         obj = bpy.context.active_object
         obj.name = obj.data.name = name
-        obj.scale = size
+        obj.data.transform(Matrix.Diagonal((size[0], size[1], size[2], 1.0)))
         obj.rotation_euler = (0.0, 0.0, yaw)
         if bevel > 0:
-            # Bevel in object space before scale, so pass width relative to the
-            # smallest side; the exporter applies modifiers.
             mod = obj.modifiers.new("bevel", "BEVEL")
-            mod.width = bevel / max(min(size), 1e-6)
+            mod.width = min(bevel, 0.45 * min(size))
             mod.segments = 1
             mod.limit_method = "NONE"
         return self._add(obj, col, mat, drivable)
@@ -282,7 +245,10 @@ class World:
         return obj
 
     def zone(self, slug: str, location) -> bpy.types.Object:
-        return self.empty(f"zone.{slug}", self.rails, (location[0], location[1], 0.0), radius=ZONE_RADII[slug])
+        import rangelib
+
+        radius = ZONE_RADIUS_OVERRIDES.get(slug, rangelib.site_radius(slug))
+        return self.empty(f"zone.{slug}", self.rails, (location[0], location[1], 0.0), radius=radius)
 
     def collider_box(self, name: str, center, size) -> bpy.types.Object:
         """An empty whose world AABB is exactly ``size`` (display size 0.5 x scale)."""
@@ -304,15 +270,77 @@ class World:
         self.review.objects.link(cam)
         return cam
 
+    # -- placement ----------------------------------------------------------
+
+    def place(self, prefix: str, slug: str, anchor, colliders=(), zones=(), yaw: float | None = None) -> Matrix:
+        """Move one installation onto the terrace of site ``slug`` as a rigid body.
+
+        District sessions keep building at their old plate coordinates (flat,
+        z = 0 is the floor) and then call ``place`` once per installation:
+
+            w.place("terminal.astute.", "astute", anchor=(ax, ay),
+                    colliders=["astute"], zones=["astute"],
+                    yaw=rangelib.site_yaw_to_hub("astute"))
+
+        The transform is T = Translate(site_center(slug)) @ RotZ(yaw or 0)
+        @ Translate(-anchor.x, -anchor.y, 0): the anchor lands on the terrace
+        centre, local z = 0 lands on the terrace level, and the whole thing
+        turns about the anchor. It is applied through ``matrix_world`` to
+        every object whose name starts with ``prefix`` (children follow their
+        parent, so only unparented matches move), every ``col.box.<p>...``
+        empty for p in ``colliders`` and every ``zone.<z>`` for z in ``zones``.
+        Box colliders are exported as world AABBs, so a yaw that is not a
+        multiple of 90 degrees inflates them; keep that in mind for walls.
+        ``rangelib.site_yaw_to_hub(slug)`` turns an installation's local -Y
+        face toward the hub (the face the old spawn view saw). Returns T.
+        """
+        import rangelib
+
+        # Transforms set since the last depsgraph update are not in
+        # matrix_world yet; without this the newest primitive and every
+        # collider empty would lose their scale and rotation.
+        bpy.context.view_layer.update()
+        center = rangelib.site_center(slug)
+        T = (
+            Matrix.Translation(center)
+            @ Matrix.Rotation(0.0 if yaw is None else yaw, 4, "Z")
+            @ Matrix.Translation((-anchor[0], -anchor[1], 0.0))
+        )
+        moved = []
+        for obj in bpy.context.scene.objects:
+            name = obj.name
+            hit = name.startswith(prefix)
+            hit = hit or any(name.startswith(f"col.box.{p}") for p in colliders)
+            hit = hit or any(name == f"zone.{z}" for z in zones)
+            if hit and (obj.parent is None or not obj.parent.name.startswith(prefix)):
+                moved.append(obj)
+        for obj in moved:
+            obj.matrix_world = T @ obj.matrix_world
+        bpy.context.view_layer.update()
+        return T
+
+    def place_site(self, prefix: str, slug: str, colliders=(), zones=(), anchor=(0.0, 0.0)) -> Matrix:
+        """``place`` for the common case: an installation built around the
+        origin with its front on local -Y, turned to face the hub."""
+        import rangelib
+
+        return self.place(prefix, slug, anchor, colliders=colliders, zones=zones, yaw=rangelib.site_yaw_to_hub(slug))
+
+    def review_camera(self, name: str, T: Matrix, eye, target, lens: float = 35.0) -> bpy.types.Object:
+        """A review camera authored in an installation's local frame (front
+        at -Y), carried onto the terrace by the placement transform."""
+        return self.camera(name, T @ Vector(eye), T @ Vector(target), lens=lens)
+
     # -- scene-wide rebuilds ------------------------------------------------
 
     def rebuild_ground(self) -> None:
-        """col.ground = the ground plane joined with every drivable surface."""
+        """col.ground = the flat hub pad (a disc of HUB_PAD_RADIUS at z = 0)
+        joined with every drivable surface. The terrain itself is not in it:
+        the runtime samples the range for everything else."""
         existing = bpy.data.objects.get("col.ground")
         if existing is not None:
             bpy.data.objects.remove(existing, do_unlink=True)
-        size = self.contract["world"]["sizeMeters"]
-        bpy.ops.mesh.primitive_plane_add(size=size, location=(0, 0, 0))
+        bpy.ops.mesh.primitive_circle_add(vertices=64, radius=HUB_PAD_RADIUS, fill_type="NGON", location=(0, 0, 0))
         ground = bpy.context.active_object
         ground.name = ground.data.name = "col.ground"
         self._add(ground, self.colliders, "tok.bg", False)
