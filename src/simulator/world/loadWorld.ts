@@ -143,14 +143,27 @@ export function districtLoadOrder(
   });
 }
 
-/** Rough district centers from the blockout, for ordering before load. */
+/**
+ * A point on the range from the site table's polar coordinates: theta in
+ * degrees counterclockwise from Blender +x (+y is straight ahead from the
+ * spawn), rho in metres. Blender (x, y) is three (x, 0, -y).
+ */
+function onRange(thetaDeg: number, rho: number): THREE.Vector3 {
+  const a = (thetaDeg * Math.PI) / 180;
+  return new THREE.Vector3(rho * Math.cos(a), 0, -rho * Math.sin(a));
+}
+
+/**
+ * Rough district centers, for ordering before load: each district is a
+ * sector of the ring of sites around the hub.
+ */
 export const DISTRICT_HINTS: Record<District, THREE.Vector3> = {
   shared: new THREE.Vector3(0, 0, 0),
-  terminal: new THREE.Vector3(-130, 0, -20),
-  redacted: new THREE.Vector3(-70, 0, -140),
-  evidence: new THREE.Vector3(110, 0, -110),
-  fabrication: new THREE.Vector3(110, 0, 100),
-  // The mountain ring surrounds everything; its center is the hub so it
-  // streams right after shared and is never distance-culled.
+  terminal: onRange(160, 300),
+  redacted: onRange(120, 275),
+  fabrication: onRange(60, 280),
+  evidence: onRange(-80, 300),
+  // The terrain disc is centred on the hub, so it streams right after
+  // shared and is never distance-culled.
   backdrop: new THREE.Vector3(0, 0, 0),
 };

@@ -27,6 +27,7 @@ import { Conifers } from "./world/instancing/Conifers.tsx";
 import { HexGround } from "./world/instancing/HexGround.tsx";
 import { IMC_SHAPE, KERMS_SHAPE } from "./world/instancing/ohlc.ts";
 import { PhotoCarousel } from "./world/instancing/PhotoCarousel.tsx";
+import { treeClearance } from "./world/instancing/treeClearance.ts";
 import { ZoneScreen } from "./world/instancing/ZoneScreen.tsx";
 import { Lake } from "./world/Lake.tsx";
 import {
@@ -40,6 +41,7 @@ import { SkyDome } from "./world/SkyDome.tsx";
 import { SunLight } from "./world/SunLight.tsx";
 import { Terrain } from "./world/terrain/Terrain.tsx";
 import { buildTrailMask } from "./world/terrain/trailMask.ts";
+import { terrainSamplerFromObject } from "./world/terrainSampler.ts";
 import { ZONE_SCREENS } from "./world/zoneScreens.ts";
 
 function WorldScene() {
@@ -76,7 +78,12 @@ function WorldScene() {
   const backdrop = districts.find((d) => d.district === "backdrop")?.group;
   // The flight floor: a coarse polar heightmap of the range, built once.
   const terrain = useMemo(
-    () => (backdrop ? heightGridFromObject(backdrop, 200, 480) : null),
+    () => (backdrop ? heightGridFromObject(backdrop, 0, 480) : null),
+    [backdrop],
+  );
+  // The drivable surface: exact terrain heights on a fine polar grid.
+  const sampler = useMemo(
+    () => (backdrop ? terrainSamplerFromObject(backdrop) : null),
     [backdrop],
   );
   // Trails and lake shores, painted by the terrain and avoided by the trees.
@@ -84,10 +91,16 @@ function WorldScene() {
     () => buildTrailMask(world.meta.trails, world.meta.lakes),
     [world.meta],
   );
+  // No tree on a site, the rail, a trail, in a lake or in the hub clearing.
   const treeExclude = useMemo(
-    () => (x: number, z: number) =>
-      trailMask.trailAt(x, z) > 0.15 || trailMask.inLake(x, z),
-    [trailMask],
+    () =>
+      treeClearance({
+        terraces: world.meta.terraces,
+        rail: world.meta.rail,
+        trailAt: (x, z) => trailMask.trailAt(x, z),
+        inLake: (x, z) => trailMask.inLake(x, z),
+      }),
+    [world.meta, trailMask],
   );
 
   useEffect(() => {
@@ -171,6 +184,9 @@ function WorldScene() {
             key={spec.zone}
             zone={anchor}
             spec={spec}
+            faceToward={world.rail.pointAt(
+              world.rail.nearestT(anchor.position),
+            )}
             onMount={onFabrication}
           />
         ) : null;
@@ -184,6 +200,7 @@ function WorldScene() {
         dozerRef={dozerRef}
         flyerRef={flyerRef}
         terrain={terrain}
+        sampler={sampler}
       />
     </>
   );
@@ -199,7 +216,7 @@ export default function WorldCanvas() {
         frameloop={active ? "always" : "never"}
         dpr={[1, 1.5]}
         shadows="soft"
-        camera={{ fov: 50, near: 0.3, far: 1000, position: [0, 12, 40] }}
+        camera={{ fov: 50, near: 0.3, far: 1400, position: [0, 12, 40] }}
         gl={{ antialias: true, powerPreference: "high-performance" }}
       >
         <Suspense fallback={null}>

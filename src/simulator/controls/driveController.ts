@@ -2,7 +2,13 @@
  * Kinematic arcade drive model for the Dozer. No physics engine: velocity
  * and yaw are integrated in fixed 120 Hz substeps so 30, 60 and 120 Hz
  * callers produce the same trajectory, the ground is followed by a height
- * query, and box colliders push the vehicle out as a circle in XZ.
+ * query, and oriented box colliders push the vehicle out as a circle in XZ.
+ *
+ * Traction: a substep that would climb steeper than `DRIVE.maxGrade`
+ * along its motion is refused, so the Dozer climbs every trail and ramp
+ * but not a cliff. The grade is measured over at least `gradeProbe` of
+ * horizontal run, so a small lip between two surfaces reads as the step it
+ * is rather than a wall, and the verdict does not depend on speed.
  */
 
 export interface DriveState {
@@ -15,6 +21,8 @@ export interface DriveState {
   speed: number;
   /** Unconsumed simulation time, seconds. */
   acc: number;
+  /** Whether the last accepted position had ground under it. */
+  grounded: boolean;
 }
 
 export interface DriveInput {
@@ -24,15 +32,17 @@ export interface DriveInput {
   steer: number;
 }
 
-export interface Aabb {
-  min: [number, number, number];
-  max: [number, number, number];
+/** A box in XZ: centre, half extents and a yaw about +Y (Y is ignored). */
+export interface OrientedBox {
+  center: readonly [number, number, number];
+  half: readonly [number, number, number];
+  yaw: number;
 }
 
 export interface DriveWorld {
   /** Ground height under (x, z), or null when off the world. */
   groundHeight(x: number, z: number): number | null;
-  colliders: readonly Aabb[];
+  colliders: readonly OrientedBox[];
   bounds: { minX: number; maxX: number; minZ: number; maxZ: number };
 }
 
@@ -55,6 +65,12 @@ export const DRIVE = {
   ride: 0,
   /** Speed kept per substep while rubbing a collider (~0.55/s of contact). */
   scrape: 0.995,
+  /** Steepest uphill grade (rise over run) the tracks hold, ~35 degrees. */
+  maxGrade: 0.7,
+  /** Shortest horizontal run the grade is measured over, meters. */
+  gradeProbe: 0.5,
+  /** Speed kept when a climb is refused. */
+  refusedSpeed: 0.5,
 } as const;
 
 export const IDLE_INPUT: DriveInput = { throttle: 0, steer: 0 };
@@ -65,7 +81,7 @@ export function createDriveState(
   z: number,
   yaw = 0,
 ): DriveState {
-  return { x, y, z, yaw, speed: 0, acc: 0 };
+  return { x, y, z, yaw, speed: 0, acc: 0, grounded: true };
 }
 
 function clamp(v: number, lo: number, hi: number): number {
@@ -102,33 +118,43 @@ function substep(s: DriveState, input: DriveInput, world: DriveWorld): void {
   let x = s.x + Math.sin(yaw) * speed * dt;
   let z = s.z + Math.cos(yaw) * speed * dt;
 
-  // Colliders: circle vs AABB in XZ, two passes so corners resolve. Only the
-  // position is corrected, so motion along a wall keeps sliding.
+  // Colliders: circle vs oriented box in XZ, two passes so corners
+  // resolve. The vehicle is taken into the box's own frame, pushed out of
+  // the axis-aligned box there and brought back; only the position is
+  // corrected, so motion along a wall keeps sliding.
   for (let pass = 0; pass < 2; pass++) {
     for (const box of world.colliders) {
-      const cx = clamp(x, box.min[0], box.max[0]);
-      const cz = clamp(z, box.min[2], box.max[2]);
-      let dx = x - cx;
-      let dz = z - cz;
-      let d = Math.hypot(dx, dz);
+      const c = Math.cos(box.yaw);
+      const sn = Math.sin(box.yaw);
+      const wx = x - box.center[0];
+      const wz = z - box.center[2];
+      // Local axes: +X is (c, -sn) in world XZ, +Z is (sn, c).
+      let lx = c * wx - sn * wz;
+      let lz = sn * wx + c * wz;
+      const hx = box.half[0];
+      const hz = box.half[2];
+      const cx = clamp(lx, -hx, hx);
+      const cz = clamp(lz, -hz, hz);
+      const dx = lx - cx;
+      const dz = lz - cz;
+      const d = Math.hypot(dx, dz);
       if (d >= DRIVE.radius) continue;
       if (d === 0) {
         // Center inside the box: exit through the nearest face.
-        const toMin = [x - box.min[0], z - box.min[2]];
-        const toMax = [box.max[0] - x, box.max[2] - z];
+        const toMin = [lx + hx, lz + hz];
+        const toMax = [hx - lx, hz - lz];
         const m = Math.min(toMin[0], toMin[1], toMax[0], toMax[1]);
-        if (m === toMin[0]) dx = -1;
-        else if (m === toMax[0]) dx = 1;
-        else if (m === toMin[1]) dz = -1;
-        else dz = 1;
-        d = 0;
-        x += dx * (DRIVE.radius + m);
-        z += dz * (DRIVE.radius + m);
+        if (m === toMin[0]) lx -= DRIVE.radius + m;
+        else if (m === toMax[0]) lx += DRIVE.radius + m;
+        else if (m === toMin[1]) lz -= DRIVE.radius + m;
+        else lz += DRIVE.radius + m;
       } else {
         const push = DRIVE.radius - d;
-        x += (dx / d) * push;
-        z += (dz / d) * push;
+        lx += (dx / d) * push;
+        lz += (dz / d) * push;
       }
+      x = box.center[0] + c * lx + sn * lz;
+      z = box.center[2] - sn * lx + c * lz;
       speed *= DRIVE.scrape;
     }
   }
@@ -138,11 +164,51 @@ function substep(s: DriveState, input: DriveInput, world: DriveWorld): void {
   z = clamp(z, b.minZ + DRIVE.radius, b.maxZ - DRIVE.radius);
 
   const ground = world.groundHeight(x, z);
+  if (ground !== null && tooSteep(s, x, z, ground, world)) {
+    // Refused: the tracks spin. Heading still changes so the driver can
+    // turn away or back off; downhill is never refused.
+    s.yaw = yaw;
+    s.speed = speed * DRIVE.refusedSpeed;
+    return;
+  }
   s.x = x;
   s.z = z;
   s.y = ground === null ? s.y : ground + DRIVE.ride;
+  s.grounded = ground !== null;
   s.yaw = yaw;
   s.speed = speed;
+}
+
+/**
+ * Uphill grade from the current ground to the candidate position, rise over
+ * horizontal run. A step shorter than `gradeProbe` is measured over that
+ * probe distance along the same direction instead, so the answer is the
+ * slope of the ground, not of one 1/120 s hop.
+ */
+function tooSteep(
+  s: DriveState,
+  x: number,
+  z: number,
+  ground: number,
+  world: DriveWorld,
+): boolean {
+  const dx = x - s.x;
+  const dz = z - s.z;
+  const run = Math.hypot(dx, dz);
+  if (run < 1e-9) return false;
+  const from = s.y - DRIVE.ride;
+  let ahead = ground;
+  let span = run;
+  // The probe runs ahead of every hop, so it meets a slope before the
+  // vehicle does and a lip of a few centimetres reads as a few percent.
+  if (run < DRIVE.gradeProbe) {
+    span = DRIVE.gradeProbe;
+    const k = span / run;
+    const probe = world.groundHeight(s.x + dx * k, s.z + dz * k);
+    if (probe === null) return false;
+    ahead = probe;
+  }
+  return (ahead - from) / span > DRIVE.maxGrade;
 }
 
 /**
@@ -165,9 +231,15 @@ export function advance(
   return state;
 }
 
-/** Circle-vs-AABB test used by the out-of-bounds check and tests. */
-export function penetrates(state: DriveState, box: Aabb): boolean {
-  const cx = clamp(state.x, box.min[0], box.max[0]);
-  const cz = clamp(state.z, box.min[2], box.max[2]);
-  return Math.hypot(state.x - cx, state.z - cz) < DRIVE.radius - 1e-6;
+/** Circle-vs-oriented-box test, for the tests. */
+export function penetrates(state: DriveState, box: OrientedBox): boolean {
+  const c = Math.cos(box.yaw);
+  const sn = Math.sin(box.yaw);
+  const wx = state.x - box.center[0];
+  const wz = state.z - box.center[2];
+  const lx = c * wx - sn * wz;
+  const lz = sn * wx + c * wz;
+  const cx = clamp(lx, -box.half[0], box.half[0]);
+  const cz = clamp(lz, -box.half[2], box.half[2]);
+  return Math.hypot(lx - cx, lz - cz) < DRIVE.radius - 1e-6;
 }

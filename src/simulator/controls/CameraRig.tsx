@@ -8,6 +8,7 @@ import { frame, sim } from "../simStore.ts";
 import { contract } from "../world/contract.ts";
 import type { HeightGrid } from "../world/heightGrid.ts";
 import type { LoadedDistrict, WorldBase } from "../world/loadWorld.ts";
+import type { TerrainSampler } from "../world/terrainSampler.ts";
 import type { ControlMode } from "./controlMachine.ts";
 import { parseDevCamera } from "./devCamera.ts";
 import {
@@ -47,7 +48,7 @@ const FLY = {
   follow: 4,
 } as const;
 
-/** The flyable circle stays inside the outer ring of the range. */
+/** The flyable circle stays inside the terrain disc (470 m). */
 const FLIGHT_RADIUS = 460;
 const FLIGHT_CEILING = 230;
 
@@ -57,10 +58,10 @@ const RETURN = {
   arrive: 0.4,
 } as const;
 
-/** Where the ground raycast starts; nothing is taller than this. */
-const RAY_HEIGHT = 200;
+/** Where the ground raycast starts; nothing drivable is taller than this. */
+const RAY_HEIGHT = 400;
 
-/** Seconds off the collision ground before the Dozer is respawned. */
+/** Seconds with no ground underneath before the Dozer is respawned. */
 const SIGNAL_LOST_AFTER = 0.6;
 /** How long the "SIGNAL LOST" line stays up after the respawn, seconds. */
 const SIGNAL_LOST_HOLD = 1.4;
@@ -76,6 +77,8 @@ interface CameraRigProps {
   flyerRef: RefObject<THREE.Group | null>;
   /** Terrain heights for the flight floor; null until the range loads. */
   terrain: HeightGrid | null;
+  /** The drivable terrain surface; null until the range loads. */
+  sampler: TerrainSampler | null;
 }
 
 /**
@@ -89,6 +92,7 @@ export function CameraRig({
   dozerRef,
   flyerRef,
   terrain,
+  sampler,
 }: CameraRigProps) {
   const camera = useThree((s) => s.camera);
   const gl = useThree((s) => s.gl);
@@ -98,15 +102,23 @@ export function CameraRig({
     const origin = new THREE.Vector3();
     const down = new THREE.Vector3(0, -1, 0);
     const b = world.meta.bounds;
+    const lakes = world.meta.lakes;
     return {
+      // Installation surfaces first (plaza, keys, field, boards), then the
+      // range itself. Open water has no floor: the Dozer does not swim.
       groundHeight(x, z) {
         origin.set(x, RAY_HEIGHT, z);
         raycaster.set(origin, down);
         const hit = raycaster.intersectObject(world.ground, true)[0];
-        lastHeight.current = hit ? hit.point.y : null;
-        return lastHeight.current;
+        if (hit) return hit.point.y;
+        for (const lake of lakes) {
+          const dx = x - lake.center[0];
+          const dz = z - lake.center[2];
+          if (dx * dx + dz * dz < lake.radius * lake.radius) return null;
+        }
+        return sampler ? sampler.heightAt(x, z) : null;
       },
-      colliders: world.meta.colliders.map((c) => ({ min: c.min, max: c.max })),
+      colliders: world.meta.colliders,
       bounds: {
         minX: b.min[0],
         maxX: b.max[0],
@@ -114,7 +126,7 @@ export function CameraRig({
         maxZ: b.max[2],
       },
     };
-  }, [world, raycaster]);
+  }, [world, raycaster, sampler]);
 
   const drive = useRef(createDriveState(0, 0, 0, 0));
   const flight = useRef(
@@ -133,7 +145,6 @@ export function CameraRig({
   const vehicle = useRef<"dozer" | "flyer">("dozer");
   const offGround = useRef(0);
   const lostHold = useRef(0);
-  const lastHeight = useRef<number | null>(0);
   const tracker = useMemo(
     () => new ProximityTracker(world.meta.zones),
     [world],
@@ -255,10 +266,10 @@ export function CameraRig({
       }
     }
 
-    // Out of bounds: off the collision ground for long enough means the
-    // world has no floor here. Put the Dozer back on the nearest rail point.
-    offGround.current =
-      lastHeight.current === null ? offGround.current + dt : 0;
+    // Out of bounds: no ground for long enough means the world has no
+    // floor here (off the disc, in a lake). Put the Dozer back on the
+    // nearest rail point.
+    offGround.current = drive.current.grounded ? 0 : offGround.current + dt;
     if (offGround.current > SIGNAL_LOST_AFTER) {
       const t = world.rail.nearestT([
         drive.current.x,
@@ -271,6 +282,7 @@ export function CameraRig({
       drive.current.z = s.v3[2];
       drive.current.y = ground;
       drive.current.speed = 0;
+      drive.current.grounded = true;
       offGround.current = 0;
       lostHold.current = SIGNAL_LOST_HOLD;
       if (!snap.signalLost) sim.set({ signalLost: true });
