@@ -11,6 +11,16 @@ describe("zone districts", () => {
     }
   });
 
+  it("lists the windows in rail order, hub first", () => {
+    expect(WINDOWS).toEqual([
+      "shared",
+      "terminal",
+      "redacted",
+      "fabrication",
+      "evidence",
+    ]);
+  });
+
   it("names the shared district after the hub", () => {
     expect(windowName("shared")).toBe("hub");
     expect(windowName("evidence")).toBe("evidence");

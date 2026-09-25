@@ -6,11 +6,13 @@ import { sim } from "../simStore.ts";
 import { readPalette } from "./palette.ts";
 import { type MaterialRegistry, RETINT_MS } from "./retint.ts";
 
-// Atmospheric perspective, not a wall: the mountain ring (205 to 470 m
-// out) only softens toward the horizon tone, its far side keeping most of
-// its color; districts are culled well inside this range.
+// Atmospheric perspective, not a wall: the terrain disc (470 m around the
+// hub) only softens toward the horizon tone. From a site on one side the
+// range across the valley is 700 to 800 m away and keeps about half its
+// color; even the far rim from the opposite rim (about 940 m) stays short
+// of full fog, and the camera's far plane (1400 m) is beyond all of it.
 const FOG_NEAR = 240;
-const FOG_FAR = 1050;
+const FOG_FAR = 1300;
 
 function readCssPalette() {
   const style = getComputedStyle(document.documentElement);

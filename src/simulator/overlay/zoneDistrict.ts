@@ -22,13 +22,18 @@ export const ZONE_DISTRICT: Record<ZoneSlug, District> = {
   "swiftlabs-platform": "redacted",
 };
 
-/** The districts a visitor can stand in, in rail order; the backdrop is scenery. */
+/**
+ * The districts a visitor can stand in, in rail order: the railway leaves
+ * the hub, runs round the ring of sites (terminal west, redacted
+ * north-west, fabrication ahead, evidence east and behind) and returns.
+ * The backdrop is the terrain itself.
+ */
 export const WINDOWS: readonly District[] = [
   "shared",
   "terminal",
-  "evidence",
-  "fabrication",
   "redacted",
+  "fabrication",
+  "evidence",
 ];
 
 /** Short window names for the status line; the shared district is the hub. */

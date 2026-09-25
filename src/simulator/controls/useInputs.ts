@@ -2,8 +2,8 @@ import { useEffect } from "react";
 import { frame, sim } from "../simStore.ts";
 import type { FlightInput } from "./flightController.ts";
 
-/** Screens of scroll that map onto the full rail loop. */
-export const RAIL_SCREENS = 14;
+/** Screens of scroll that map onto the full rail loop round the range. */
+export const RAIL_SCREENS = 24;
 
 const KEYBOARD_QUERY = "(hover: hover) and (pointer: fine)";
 
