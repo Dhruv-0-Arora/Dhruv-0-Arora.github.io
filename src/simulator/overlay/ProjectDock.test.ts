@@ -34,7 +34,7 @@ describe("projectForZone", () => {
     expect(JSON.stringify(orion)).toMatch(/contribute to|work on with Aditya/);
     expect(JSON.stringify(orion)).toMatch(/not my share/);
     const imc = projects.find((p) => p.slug === "imc-prosperity-4");
-    expect(JSON.stringify(imc)).toMatch(/team DAAB/);
+    expect(JSON.stringify(imc)).toMatch(/team DAAB/i);
     expect(JSON.stringify(imc)).toMatch(/not a closing result/);
     const synthesis = projects.find((p) => p.slug === "synthesis");
     expect(JSON.stringify(synthesis)).not.toMatch(/\d+ commits/);

@@ -14,24 +14,30 @@ export interface Guide {
 
 export const guide: Guide = {
   kicker: "the simulator",
-  title: "How to explore",
+  title: "How to ride the range",
   intro:
-    "This portfolio is a world. Every installation is a real project, the vehicle on the pad is a real robot CAD file parsed live in the browser, and the biplane above it is a 1903 Flyer at full size.",
+    "This portfolio is a mountain range. Every summit, shoulder and lakeshore holds a real project, and a little railway climbs from the valley to each of them and back. The vehicle on the pad is a real robot CAD file parsed live in the browser, and the biplane above it is a 1903 Flyer at full size.",
   steps: [
-    { keys: ["scroll"], text: "Travel the rail through the four districts." },
+    {
+      keys: ["scroll"],
+      text: "Ride the railway round the range, site by site, and back down to the hub.",
+    },
     {
       keys: ["drag"],
       text: "Click and drag the world to look around; let go and it coasts.",
     },
     { keys: ["F"], text: "Take the wheel of the Dozer." },
-    { keys: ["W", "A", "S", "D"], text: "Drive. The arrow keys work too." },
+    {
+      keys: ["W", "A", "S", "D"],
+      text: "Drive. The arrow keys work too. Every trail is climbable; the cliffs are not.",
+    },
     {
       keys: ["T"],
       text: "Take off in the Flyer hanging over the pad. W and S for throttle, A and D to bank, the up and down arrows to climb and dive.",
     },
     {
       keys: ["Esc"],
-      text: "Let go of the wheel, or land, and glide back to the rail.",
+      text: "Let go of the wheel, or land, and glide back to the train.",
     },
     {
       keys: ["theme"],
@@ -39,5 +45,5 @@ export const guide: Guide = {
     },
   ],
   outro:
-    "Each district opens this panel with the project you are next to. The photos above the pad are from the Cascades. Mount Adams is climbed; Rainier is next.",
+    "Each site opens this panel with the project you are next to. The photos above the pad are from the Cascades, and the range borrows its peaks: astute sits on the summit of Adams, Synthesis on the shoulder of Rainier. Mount Adams is climbed; Rainier is next.",
 };
