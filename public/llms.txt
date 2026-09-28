@@ -7,4 +7,4 @@ Personal portfolio of Dhruv Arora, a computer science and math student at UW-Mad
 - Projects, experience, skills, and awards are on the single-page site.
 - Contact: a_dhruv@outlook.com. GitHub: https://github.com/Dhruv-0-Arora
 
-The site is an explorable 3D world: visitors ride a camera rail through districts built from his projects, or press F to drive the Dozer robot, a real Synthesis .mira (Mirabuf protobuf) file parsed live in the browser. A static page serves reduced-motion, small-screen and no-WebGL visitors.
+The site is an explorable 3D world: a mountain range where every summit, shoulder and lakeshore holds a project he built or contributes to. Visitors ride a mountain railway from the hub in the valley to each site and back, press F to drive the Dozer robot (a real Synthesis .mira Mirabuf protobuf file parsed live in the browser) up the trails, or press T to fly a full-size 1903 Wright Flyer. A static page serves reduced-motion, small-screen and no-WebGL visitors.

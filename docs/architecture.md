@@ -31,10 +31,19 @@ Nothing in tracked files may depend on them.
 ## Runtime flow
 
 1. `SimulatorRoot` decides capability: `simulator`, or `reduced-motion` (static page with an "enter anyway" button), `narrow` (<380px) and `no-webgl` (static page).
-2. `SimulatorShell` mounts DOM listeners (`useInputs`), a fixed full-viewport canvas layer, a tall scroll spacer (14 screens = one loop of the rail), the `HUD`, the `ProjectDock`, and a screen-reader-only project list.
-3. `WorldCanvas` (lazy, in the `three` chunk) loads `meta.json` and `shared.glb` plus the Dozer, then streams the other districts nearest-first (the `backdrop` ring first, since its center is the hub) and mounts the runtime instancers, the sky dome and the sun.
-4. `CameraRig` is the frame loop: integrates the drive and flight models, places the camera for the current mode, runs zone proximity, culls districts by distance (320 m, never the backdrop), respawns the Dozer if it leaves the collision ground, samples stats.
+2. `SimulatorShell` mounts DOM listeners (`useInputs`), a fixed full-viewport canvas layer, a tall scroll spacer (24 screens = one loop of the railway round the range), the `HUD`, the `ProjectDock`, and a screen-reader-only project list.
+3. `WorldCanvas` (lazy, in the `three` chunk) loads `meta.json` and `shared.glb` plus the Dozer, then streams the other districts nearest-first (the `backdrop` terrain disc first, since its center is the hub, then the four sectors of the ring of sites) and mounts the runtime instancers, the sky dome and the sun.
+4. `CameraRig` is the frame loop: integrates the drive and flight models, places the camera for the current mode, runs zone proximity, culls districts by distance (`contract.world.cullDistanceMeters`, 800 m, never the backdrop), respawns the Dozer after 0.6 s with no ground under it (off the disc or in a lake), samples stats.
 5. `useRetint` reads `--c-*` custom properties from the DOM on every theme change and repaints every world material and the background over 200 ms; `SkyDome` lerps its own colors on the same clock and paints the fog color to match its horizon.
+
+## Driving on the range
+
+The world is one terrain disc, 470 m in radius, centred on the hub, with every site on a flat terrace cut into it (`meta.terraces`).
+`CameraRig` answers the drive model's ground query in order: a raycast against `col.ground` (only the drivable installation surfaces and the hub pad), then open water (no floor, so the Dozer respawns), then `TerrainSampler`, else null.
+The sampler is built once when the backdrop loads, from the largest `tok.rock` mesh: every upward-facing triangle is rasterized onto a regular polar grid, so a lookup is two array reads and a bilinear blend however the build welded, joined or quantized the mesh.
+`driveController.ts` refuses any substep whose uphill grade along the motion exceeds `DRIVE.maxGrade` (0.7, about 35 degrees) and halves the speed; the grade is measured over at least half a metre ahead, so a lip of a few centimetres between two surfaces reads as a step and the verdict is the same at any speed.
+Trails are routed under a grade of 0.5 and terraces are flat, so every trail is drivable and no cliff is.
+The respawn uses the same query at the nearest rail point.
 
 ## State
 
@@ -50,7 +59,8 @@ Nothing in tracked files may depend on them.
 | `controls/railPath.ts` | arc-length rail, eased look targets |
 | `controls/dragLook.ts` | click-and-drag look offset with coasting and recentering |
 | `controls/flightController.ts` | arcade flight for the Flyer: throttle, bank, pitch, floor and ceiling, homing at the edge |
-| `world/heightGrid.ts` | polar heightmap of the range built from its vertices, the flight floor |
+| `world/heightGrid.ts` | coarse polar max-heightmap of the whole terrain disc (rho 0 to 480) built from its vertices, the flight floor |
+| `world/terrainSampler.ts` | exact terrain heights on a 1 m by about 2 m polar grid, rasterized once from the range's triangles, bilinear lookups, null off the disc; the drive ground |
 | `world/csm.ts` | composes the cascaded-shadow shader with a material's own patch, sweeps the scene for new materials, texel-scaled bias |
 | `controls/devCamera.ts` | development-only fixed camera from `?cam=&at=&fov=` |
 | `flyer/flyerGeometry.ts` | cambered fabric surfaces, twisted propeller blades and the muslin rib painter for the Flyer |
@@ -58,17 +68,18 @@ Nothing in tracked files may depend on them.
 | `overlay/zoneDistrict.ts` | which district each zone lives in, for the panel's status line |
 | `world/terrain/terrainField.ts` | treeline and forest weight, mirrored in the terrain shader |
 | `world/terrain/trailMask.ts` | polar mask of the trails and lake shores from `meta.trails` and `meta.lakes`, sampled by the terrain shader and the conifer scatter |
-| `controls/driveController.ts` | fixed 120 Hz substeps, circle-vs-AABB push-out, ground follow |
+| `controls/driveController.ts` | fixed 120 Hz substeps, circle-vs-AABB push-out, ground follow, traction (uphill grade over 0.7 refused) |
 | `proximity/proximity.ts` | one active zone, 1.25r exit hysteresis, handover to a closer overlapping zone |
 | `theme/palette.ts`, `retint.ts`, `oklab.ts` | CSS color parsing, material-name binding, lerped repaint, Oklab gradients |
 | `world/contract.ts`, `meta.ts` | typed contract, validation of the exported meta |
 | `world/instancing/hexGrid.ts`, `ohlc.ts` | deterministic layouts for the instancers |
+| `world/instancing/treeClearance.ts` | where no tree may stand: hub clearing, terraces, a rasterized rail corridor, trails, lakes |
 
 ## Runtime instancers
 
 `src/simulator/world/instancing/` holds one component per repetitive or animated field, anchored on a zone, a route or a loaded district from `meta.json`.
-Bamboo grove on `dirnt`, hex map on `cypher`, camera frusta on `altigoz`, candlesticks on `kerms` and `imc-prosperity-4`.
-On the backdrop: `Climbers` (rope teams walking `meta.routes`, pure path math in `climbPath.ts`) and `Conifers` (trees scattered over the loaded range in proportion to the terrain field's forest weight).
+Bamboo grove on `dirnt`, hex map on `cypher` (sized to the zone's diameter and cut round to its terrace), camera frusta on `altigoz`, candlesticks on `kerms` and `imc-prosperity-4`.
+On the backdrop: `Climbers` (rope teams walking `meta.routes`, pure path math in `climbPath.ts`) and `Conifers` (up to 12,000 trees scattered over the loaded range in proportion to the terrain field's forest weight, thinned evenly past the cap, kept off every terrace, the rail, the trails, the lakes and the hub clearing by `treeClearance.ts`).
 At the hub: `PhotoCarousel` (six frames fed by `src/content/gallery.ts`) and, hanging over the pad, the Flyer (`flyer/FlyerRig.tsx`, a life-size 1903 biplane: generated cambered muslin surfaces with a rib texture, spruce struts and wires, the engine and its chain drives, twisted pusher propellers and the prone pilot, props idling until it is flown).
 
 The rail itself is visible: `rail/RailTrack.tsx` builds two rail tubes, instanced ties and a beam from the exported rail curve, and `rail/Train.tsx` parks three open cars at `frame.railT`, the smoothed parameter the camera follows, so the visitor rides the lead car and the train waits on the track while a vehicle is out. Every visual constant is in `rail/railStyle.ts`; the shape is the Blender rail.
@@ -80,7 +91,7 @@ They derive per-instance colors from the palette in the store, so they follow th
 `world/terrain/terrainShader.ts` patches the range's `tok.rock` material: per fragment it derives snow, glacier ice, rock strata, scree, meadow and forest floor from world height, slope, sun aspect and hash noise, lowers roughness on snow, and bends the normal with a fine bump.
 `world/terrain/terrainField.ts` is the CPU mirror of the treeline and forest weight, used by `Conifers` and the tests.
 `world/terrain/Terrain.tsx` attaches the patch to the loaded backdrop and lerps the snow, forest and meadow uniforms from the palette on the retint clock.
-Trails and lake shores are not in the noise: `trailMask.ts` rasterizes `meta.trails` (a 3.5 m tread with a soft edge) and a gravel ring around each of `meta.lakes` into one polar texture (theta across and wrapping, rho from the plate's edge to the rim), and the shader samples it with the same mapping to paint dirt and gravel and to keep forest and meadow off the tread.
+Trails and lake shores are not in the noise: `trailMask.ts` rasterizes `meta.trails` (a 3.5 m tread with a soft edge) and a gravel ring around each of `meta.lakes` into one polar texture (theta across and wrapping, rho from the hub to the rim of the disc, about a metre a texel out at the sites), and the shader samples it with the same mapping to paint dirt and gravel and to keep forest and meadow off the tread.
 `Conifers` reads the same mask so no tree stands on a trail or in a lake.
 `world/Lake.tsx` patches the `tok.water` disc material: scrolling ripple normals, low roughness, and a fresnel mix toward the palette's sky color at grazing angles; the water color and its alpha are the token, kept current by the registry.
 

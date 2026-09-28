@@ -25,6 +25,8 @@ bun run test     # vitest (unit tests, plus a Blender pipeline test when blender
 
 ## The world
 
+The site is a mountain range: every project sits on a terrace cut into a summit, a shoulder or a lakeshore, a railway runs from the hub in the valley round every site and back, and the Dozer can drive the trails anywhere the ground is not too steep.
+
 The simulator's world is authored in Blender (`assets/blender/world.blend`) and shipped as meshopt-compressed glbs in `public/world/`.
 `assets/blender/contract.json` is the contract both sides follow: collection layout, object naming, the material-name theming scheme, zones, and triangle and wire budgets.
 
