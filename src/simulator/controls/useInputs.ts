@@ -1,9 +1,21 @@
 import { useEffect } from "react";
 import { frame, sim } from "../simStore.ts";
 import type { FlightInput } from "./flightController.ts";
+import {
+  attachScroller,
+  NEXT_KEYS,
+  PREV_KEYS,
+  scroller,
+  scrollProgress,
+} from "./scroller.ts";
+import { railFromScroll } from "./stations.ts";
 
-/** Screens of scroll that map onto the full rail loop round the range. */
-export const RAIL_SCREENS = 24;
+/**
+ * Screens of scroll for the full lap round the range. The stations layout
+ * (`stations.ts`) decides how those screens are shared between dwelling at
+ * a project and travelling to the next; this is the only overall length.
+ */
+export const RAIL_SCREENS = 16;
 
 const KEYBOARD_QUERY = "(hover: hover) and (pointer: fine)";
 
@@ -66,16 +78,21 @@ export function inputFromKeys(pressed: ReadonlySet<string>) {
   };
 }
 
-export function scrollProgress(): number {
-  const max = document.documentElement.scrollHeight - window.innerHeight;
-  return max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+/**
+ * Rail t the page scroll asks for: through the stations layout once the
+ * world meta is in, linear before that.
+ */
+export function scrollTargetT(): number {
+  const s = scrollProgress();
+  return frame.layout ? railFromScroll(s, frame.layout) : s;
 }
 
 /**
  * DOM side of the controls: scroll and a click-and-drag look feed the
  * rails camera, keys feed the drive and flight models, F, T and Escape
- * switch modes. Losing focus or the tab clears every held key so neither
- * vehicle ever drives itself.
+ * switch modes, and the next/previous keys hop between stations on rails.
+ * Losing focus or the tab clears every held key so neither vehicle ever
+ * drives itself.
  */
 export function useInputs(): void {
   useEffect(() => {
@@ -86,7 +103,7 @@ export function useInputs(): void {
     mql.addEventListener("change", updateKeyboard);
 
     const onScroll = () => {
-      frame.scrollT = scrollProgress();
+      frame.scrollT = scrollTargetT();
     };
     // Click and drag on the world to look around. Only the canvas starts a
     // drag, so the overlays keep their clicks; a finger dragging the page
@@ -156,7 +173,14 @@ export function useInputs(): void {
         if (mode === "flying") sim.dispatch({ type: "LAND" });
         return;
       }
-      if (mode === "driving") {
+      if (mode === "rails") {
+        // Station hops. The arrows steer and bank in the vehicles, so this
+        // only runs on rails.
+        if (NEXT_KEYS.has(e.code) || PREV_KEYS.has(e.code)) {
+          e.preventDefault();
+          scroller.jumpToStation(NEXT_KEYS.has(e.code) ? 1 : -1);
+        }
+      } else if (mode === "driving") {
         if (e.code in THROTTLE_KEYS || e.code in STEER_KEYS) {
           e.preventDefault();
           pressed.add(e.code);
@@ -181,6 +205,7 @@ export function useInputs(): void {
     };
 
     onScroll();
+    const detachScroller = attachScroller();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
     window.addEventListener("pointerdown", onPointerDown);
@@ -193,6 +218,7 @@ export function useInputs(): void {
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
       mql.removeEventListener("change", updateKeyboard);
+      detachScroller();
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
       window.removeEventListener("pointerdown", onPointerDown);

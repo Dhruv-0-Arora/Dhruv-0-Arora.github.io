@@ -3,7 +3,9 @@ import { guide } from "../../content/guide";
 import { projects } from "../../content/projects";
 import type { Project } from "../../content/types";
 import type { Hue } from "../../lib/hues";
-import { useSim } from "../simStore.ts";
+import { scroller } from "../controls/scroller.ts";
+import { projectOrder } from "../controls/stations.ts";
+import { frame, useSim } from "../simStore.ts";
 import { ZONE_SLUGS, type ZoneSlug } from "../world/contract.ts";
 import { panel, usePanelState } from "./panelState.ts";
 import { WINDOWS, windowName, ZONE_DISTRICT } from "./zoneDistrict.ts";
@@ -133,23 +135,58 @@ function ProjectBody({ project, hue }: { project: Project; hue: string }) {
   );
 }
 
+/**
+ * The status bar: decorative tmux windows on the left, and on the right
+ * the station counter in riding order between the prev and next controls.
+ * The counter follows the rail, so "next" from 3/13 always shows 4/13.
+ */
 function StatusLine({ zone }: { zone: ZoneSlug }) {
   const district = ZONE_DISTRICT[zone];
-  const index = (PROJECT_ZONES as readonly ZoneSlug[]).indexOf(zone);
+  // The layout is published once the world meta is in, before any zone can
+  // be entered, so by the time this renders it is there; the contract order
+  // is the fallback for the one render that could precede it.
+  const order: readonly ZoneSlug[] = frame.layout
+    ? projectOrder(frame.layout)
+    : PROJECT_ZONES;
+  const index = order.indexOf(zone);
   return (
-    <footer className="term-status" aria-hidden="true">
-      <span className="term-session">[sim]</span>
-      {WINDOWS.map((w, i) => (
-        <span
-          key={w}
-          className={w === district ? "term-win term-win-active" : "term-win"}
-        >
-          {i}:{windowName(w)}
-        </span>
-      ))}
-      <span className="term-right">
-        {index >= 0 ? `${index + 1}/${PROJECT_ZONES.length}  ` : ""}❄ nix
+    <footer className="term-status">
+      <span className="term-session" aria-hidden="true">
+        [sim]
       </span>
+      <span className="term-wins" aria-hidden="true">
+        {WINDOWS.map((w, i) => (
+          <span
+            key={w}
+            className={w === district ? "term-win term-win-active" : "term-win"}
+          >
+            {i}:{windowName(w)}
+          </span>
+        ))}
+      </span>
+      <nav
+        className="term-right flex items-center gap-[1ch]"
+        aria-label="Stations"
+      >
+        <button
+          type="button"
+          onClick={() => scroller.jumpToStation(-1)}
+          aria-label="Previous station"
+          className="term-btn pointer-events-auto"
+        >
+          <span aria-hidden="true">‹ </span>prev
+        </button>
+        <span>{index >= 0 ? `${index + 1}/${order.length}` : "hub"}</span>
+        <button
+          type="button"
+          onClick={() => scroller.jumpToStation(1)}
+          aria-label="Next station"
+          className="term-btn pointer-events-auto"
+        >
+          next<span aria-hidden="true"> ›</span>
+        </button>
+        <span aria-hidden="true">❄ nix</span>
+      </nav>
     </footer>
   );
 }
@@ -192,7 +229,7 @@ export function ProjectPanel() {
         aria-live="polite"
         aria-hidden={collapsed || hidden}
         hidden={hidden}
-        className={`pointer-events-none fixed z-20 flex transition-transform ease-out ${motion} inset-x-3 bottom-3 max-h-[54vh] md:inset-x-auto md:top-[5.25rem] md:bottom-auto md:left-5 md:max-h-[calc(100vh-9.5rem)] md:w-[min(44vw,41rem)] ${
+        className={`pointer-events-none fixed z-20 flex transition-transform ease-out ${motion} inset-x-3 bottom-3 max-h-[54vh] md:inset-x-auto md:top-5 md:bottom-auto md:left-5 md:max-h-[calc(100vh-5rem)] md:w-[min(44vw,41rem)] ${
           collapsed
             ? "translate-y-[calc(100%+1rem)] md:translate-x-[calc(-100%-1.5rem)] md:translate-y-0"
             : ""

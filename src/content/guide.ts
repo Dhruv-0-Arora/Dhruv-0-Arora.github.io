@@ -23,6 +23,10 @@ export const guide: Guide = {
       text: "Ride the railway round the range, site by site, and back down to the hub.",
     },
     {
+      keys: ["←", "→"],
+      text: "Hop to the previous or next site. N and P do the same, and the prev and next buttons on this panel work by touch.",
+    },
+    {
       keys: ["drag"],
       text: "Click and drag the world to look around; let go and it coasts.",
     },

@@ -358,7 +358,16 @@ body {
   color: var(--t-bg0);
 }
 
+/* The window list gives way first, so the station controls always fit. */
+.term-wins {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .term-right {
+  flex-shrink: 0;
   margin-left: auto;
 }
 

@@ -43,6 +43,8 @@ export function HUD() {
           <p className={mono}>
             scroll to travel
             <span className="text-faint"> · </span>
+            <span aria-hidden="true">← → </span>hop between sites
+            <span className="text-faint"> · </span>
             drag to look
             {canDrive ? (
               <>

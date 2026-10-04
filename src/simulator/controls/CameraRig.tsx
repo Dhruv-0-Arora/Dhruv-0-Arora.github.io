@@ -1,5 +1,5 @@
 import { useFrame, useThree } from "@react-three/fiber";
-import { type RefObject, useMemo, useRef } from "react";
+import { type RefObject, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { DOZER_YAW_OFFSET } from "../dozer/DozerRig.tsx";
 import { FLYER_PERCH } from "../flyer/FlyerRig.tsx";
@@ -9,6 +9,7 @@ import { contract } from "../world/contract.ts";
 import type { HeightGrid } from "../world/heightGrid.ts";
 import type { LoadedDistrict, WorldBase } from "../world/loadWorld.ts";
 import type { TerrainSampler } from "../world/terrainSampler.ts";
+import { clampAboveGround } from "./cameraGuard.ts";
 import type { ControlMode } from "./controlMachine.ts";
 import { parseDevCamera } from "./devCamera.ts";
 import {
@@ -24,13 +25,26 @@ import {
   IDLE_FLIGHT,
 } from "./flightController.ts";
 import { lookTargetAt } from "./railPath.ts";
+import { scrollMax } from "./scroller.ts";
+import { buildLayout, buildStations, scrollFromRail } from "./stations.ts";
+import { scrollTargetT } from "./useInputs.ts";
 
-/** Rail-following and chase-camera feel. */
+/**
+ * Rail-following feel. The camera sits on the rail exactly; all smoothing
+ * is in t, so it can never cut a chord through a hillside between two
+ * points of a bend.
+ */
 const RAILS = {
   /** How fast the smoothed rail t chases the scroll position, 1/s. */
   scrollFollow: 4,
-  /** Camera position damping, 1/s. */
-  positionFollow: 8,
+  /**
+   * Top speed along the rail, m/s. A flick of the wheel asks for hundreds
+   * of metres at once; this turns that into a fast ride rather than a
+   * teleport, and bounds how far the look smoothing can lag.
+   */
+  maxSpeed: 240,
+  /** Aim damping, 1/s. */
+  aimFollow: 8,
 } as const;
 
 const CHASE = {
@@ -149,6 +163,20 @@ export function CameraRig({
     () => new ProximityTracker(world.meta.zones),
     [world],
   );
+
+  // The scroll layout needs the world meta, so it is published from here.
+  // The scroll position is re-read through it at once: the page may have
+  // been scrolled while the world was still loading.
+  useEffect(() => {
+    frame.layout = buildLayout(
+      buildStations(world.meta, world.rail),
+      world.rail.length,
+    );
+    frame.scrollT = scrollTargetT();
+    return () => {
+      frame.layout = null;
+    };
+  }, [world]);
 
   // Scratch vectors, allocated once.
   const scratch = useMemo(
@@ -297,11 +325,14 @@ export function CameraRig({
       dozer.rotation.y = drive.current.yaw + DOZER_YAW_OFFSET;
     }
 
+    // First frame: start where the scroll already is (a reload mid-page)
+    // rather than riding there from the hub under the speed limit.
     if (!currentTarget.current) {
       currentTarget.current = new THREE.Vector3();
-      lookTargetAt(world.meta.looks, 0, s.v3);
+      smoothT.current = frame.scrollT;
+      lookTargetAt(world.meta.looks, smoothT.current, s.v3);
       currentTarget.current.set(s.v3[0], s.v3[1], s.v3[2]);
-      world.rail.pointAt(0, s.v3);
+      world.rail.pointAt(smoothT.current, s.v3);
       camera.position.set(s.v3[0], s.v3[1], s.v3[2]);
     }
     const target = currentTarget.current;
@@ -311,9 +342,15 @@ export function CameraRig({
 
     if (snap.mode === "rails") {
       const before = smoothT.current;
-      smoothT.current +=
-        (frame.scrollT - smoothT.current) * damp(RAILS.scrollFollow);
-      const t = smoothT.current;
+      let next = before + (frame.scrollT - before) * damp(RAILS.scrollFollow);
+      // Speed limit, in t per frame. Reduced motion cuts instead.
+      if (!snap.reducedMotion) {
+        const maxStep = (RAILS.maxSpeed / world.rail.length) * dt;
+        if (next > before + maxStep) next = before + maxStep;
+        else if (next < before - maxStep) next = before - maxStep;
+      }
+      smoothT.current = next;
+      const t = next;
       const travel = Math.abs(t - before);
       frame.railT = t;
       world.rail.pointAt(t, s.v3);
@@ -333,8 +370,8 @@ export function CameraRig({
       s.dir.applyAxisAngle(s.right, look.pitch);
       s.desired.addVectors(s.pos, s.dir);
 
-      camera.position.lerp(s.pos, damp(RAILS.positionFollow));
-      target.lerp(s.desired, damp(RAILS.positionFollow));
+      camera.position.copy(s.pos);
+      target.lerp(s.desired, damp(RAILS.aimFollow));
     } else if (snap.mode === "flying") {
       const f = flight.current;
       const cp = Math.cos(f.pitch);
@@ -371,8 +408,12 @@ export function CameraRig({
         frame.returnT = world.rail.nearestT([from.x, from.y, from.z]);
         smoothT.current = frame.returnT;
         frame.look.reset();
-        const max = document.documentElement.scrollHeight - window.innerHeight;
-        window.scrollTo({ top: frame.returnT * max, behavior: "instant" });
+        // Park the page where the scroll maps back onto this rail t, so
+        // the next wheel notch continues from here rather than jumping.
+        const parked = frame.layout
+          ? scrollFromRail(frame.returnT, frame.layout)
+          : frame.returnT;
+        window.scrollTo({ top: parked * scrollMax(), behavior: "instant" });
       }
       const t = frame.returnT;
       frame.railT = t;
@@ -387,6 +428,15 @@ export function CameraRig({
       if (camera.position.distanceTo(s.pos) < RETURN.arrive) {
         sim.dispatch({ type: "RETURNED" });
       }
+    }
+
+    // Safety net for every mode: the range is hollow underneath, so the
+    // eye never goes below the surface, whichever path brought it here.
+    if (sampler) {
+      camera.position.y = clampAboveGround(
+        camera.position.y,
+        sampler.heightAt(camera.position.x, camera.position.z),
+      );
     }
     camera.lookAt(target);
 

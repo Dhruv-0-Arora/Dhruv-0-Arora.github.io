@@ -7,6 +7,7 @@ import {
 import { DragLook } from "./controls/dragLook.ts";
 import type { DriveInput } from "./controls/driveController.ts";
 import { type FlightInput, IDLE_FLIGHT } from "./controls/flightController.ts";
+import type { ScrollLayout } from "./controls/stations.ts";
 import type { Palette } from "./theme/palette.ts";
 import type { District, ZoneSlug } from "./world/contract.ts";
 
@@ -34,8 +35,13 @@ export interface SimSnapshot {
 
 /** Per-frame values written by DOM listeners and read in useFrame. No React. */
 export interface FrameState {
-  /** Scroll progress 0..1 along the rail. */
+  /** Rail t the scroll position asks for, 0..1; the camera chases it. */
   scrollT: number;
+  /**
+   * How the page scroll lays out along the lap; null until the world meta
+   * is in, when scroll maps linearly to t instead.
+   */
+  layout: ScrollLayout | null;
   /** Click-and-drag look offset on the rails, fed by pointer deltas. */
   look: DragLook;
   input: DriveInput;
@@ -68,6 +74,7 @@ const listeners = new Set<() => void>();
 
 export const frame: FrameState = {
   scrollT: 0,
+  layout: null,
   look: new DragLook(),
   input: { throttle: 0, steer: 0 },
   flight: { ...IDLE_FLIGHT },
@@ -109,6 +116,7 @@ export const sim = {
   reset(): void {
     snapshot = initial;
     frame.scrollT = 0;
+    frame.layout = null;
     frame.look.reset();
     frame.input = { throttle: 0, steer: 0 };
     frame.flight = { ...IDLE_FLIGHT };
