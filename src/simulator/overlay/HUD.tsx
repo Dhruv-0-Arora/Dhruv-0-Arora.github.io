@@ -1,11 +1,9 @@
-import { ThemeToggle } from "../../components/ThemeToggle";
-import { profile } from "../../content/profile";
 import { sim, useSim } from "../simStore.ts";
 
 const mono = "font-mono text-[12px] leading-5 text-muted";
 
 /**
- * Everything that is not the world: identity, mode hints, sector loading,
+ * Everything that is not the world: mode hints, sector loading,
  * and the take-the-wheel control. All DOM, all tokens.
  */
 export function HUD() {
@@ -20,16 +18,6 @@ export function HUD() {
 
   return (
     <div className="pointer-events-none fixed inset-0 z-20">
-      <header className="absolute top-0 left-0 flex w-full items-start justify-between p-5">
-        <div className="pointer-events-auto">
-          <p className="font-mono text-[14px] font-semibold">{profile.name}</p>
-          <p className={mono}>{profile.kicker}</p>
-        </div>
-        <div className="pointer-events-auto">
-          <ThemeToggle />
-        </div>
-      </header>
-
       <div className="absolute right-5 bottom-5 flex flex-col items-end gap-2 text-right">
         {import.meta.env.DEV && worldReady ? (
           <p className={`${mono} text-faint`}>

@@ -39,11 +39,7 @@ export const guide: Guide = {
       keys: ["Esc"],
       text: "Let go of the wheel, or land, and glide back to the train.",
     },
-    {
-      keys: ["theme"],
-      text: "The toggle in the corner switches between the day sim and the night sim.",
-    },
   ],
   outro:
-    "Each site opens this panel with the project you are next to. The photos above the pad are from the Cascades, and the range borrows its peaks: astute sits on the summit of Adams, Synthesis on the shoulder of Rainier. Mount Adams is climbed; Rainier is next.",
+    "Each site opens this panel with the project you are next to. The photos above the pad are from the Cascades, and the range borrows its peaks: astute sits on the summit of Adams, Synthesis on the shoulder of Rainier. Mount Adams is climbed; Rainier is next. The range runs in daylight or at night to match the hour on your clock.",
 };

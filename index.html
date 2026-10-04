@@ -21,11 +21,10 @@
     <meta name="twitter:card" content="summary_large_image" />
     <script>
       (() => {
-        const stored = localStorage.getItem("theme");
-        const dark =
-          stored === "dark" ||
-          (stored !== "light" &&
-            matchMedia("(prefers-color-scheme: dark)").matches);
+        // Mirrors themeForHour in src/lib/theme.ts: night before 07:00 and from 19:00.
+        const t = new URLSearchParams(location.search).get("theme");
+        const h = new Date().getHours();
+        const dark = t === "dark" || (t !== "light" && (h < 7 || h >= 19));
         document.documentElement.classList.toggle("dark", dark);
       })();
     </script>

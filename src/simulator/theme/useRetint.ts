@@ -26,7 +26,7 @@ function readCssPalette() {
  * belongs to the sky dome, which paints it to match its horizon.
  */
 export function useRetint(registry: MaterialRegistry): void {
-  const [theme] = useTheme();
+  const theme = useTheme();
   const scene = useThree((s) => s.scene);
   const first = useRef(true);
   const bgFrom = useRef(new THREE.Color());

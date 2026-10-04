@@ -1,7 +1,6 @@
 import { clsx } from "clsx";
 import { useEffect, useState } from "react";
 import { profile } from "../content/profile";
-import { ThemeToggle } from "./ThemeToggle";
 
 const links = [
   { id: "about", label: "about" },
@@ -56,16 +55,13 @@ export function Nav() {
             </a>
           ))}
         </div>
-        <div className="flex items-center gap-2">
-          <a
-            href={profile.resumeHref}
-            download="Arora_Dhruv_Resume.pdf"
-            className="rounded-lg border border-border px-3 py-1.5 font-mono text-[13px] text-muted transition-colors hover:border-accent hover:text-accent"
-          >
-            resume
-          </a>
-          <ThemeToggle />
-        </div>
+        <a
+          href={profile.resumeHref}
+          download="Arora_Dhruv_Resume.pdf"
+          className="rounded-lg border border-border px-3 py-1.5 font-mono text-[13px] text-muted transition-colors hover:border-accent hover:text-accent"
+        >
+          resume
+        </a>
       </nav>
     </header>
   );

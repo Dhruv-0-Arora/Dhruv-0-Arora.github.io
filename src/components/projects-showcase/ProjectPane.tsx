@@ -38,7 +38,7 @@ export function ProjectPane({ project, index, getSmoothed }: ProjectPaneProps) {
   const borderMaterial = useRef<THREE.MeshBasicMaterial>(null);
   const shadowMaterial = useRef<THREE.MeshBasicMaterial>(null);
   const { viewport } = useThree();
-  const [theme] = useTheme();
+  const theme = useTheme();
 
   const width = Math.min(viewport.width * 0.52, viewport.height * 1.15);
   const height = width * 0.625;
