@@ -71,3 +71,59 @@ export const IMC_SHAPE: SeriesShape = {
   upBias: 0.5,
   events: { 8: 0.12, 16: -0.09, 26: 0.9, 27: 0.35, 34: -0.5, 35: -0.25 },
 };
+
+/** One axis-aligned box of a drawn chart, in chart-local meters. */
+export interface CandleBox {
+  /** Center of the box along the time axis. */
+  x: number;
+  /** Bottom of the box above the chart base. */
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface ChartLayout {
+  width: number;
+  height: number;
+  bodyWidth: number;
+  wickWidth: number;
+  /** Shortest a body may draw, so a doji still reads. */
+  minBody: number;
+}
+
+/**
+ * Lays a series out as boxes, a body and a wick per candle, grouped by
+ * direction so each group can be drawn in its own material: a glow has to
+ * carry the candle's hue, and three.js applies instance colors to the
+ * diffuse term only, never to emissive.
+ * x runs from -width/2 to width/2; y runs from 0 (the series low) to height.
+ */
+export function candleBoxes(
+  candles: readonly Candle[],
+  layout: ChartLayout,
+): { up: CandleBox[]; down: CandleBox[] } {
+  const up: CandleBox[] = [];
+  const down: CandleBox[] = [];
+  if (candles.length === 0) return { up, down };
+  const lo = Math.min(...candles.map((c) => c.low));
+  const hi = Math.max(...candles.map((c) => c.high));
+  const scale = layout.height / (hi - lo || 1);
+  const pitch = layout.width / candles.length;
+  candles.forEach((c, i) => {
+    const x = -layout.width / 2 + pitch * (i + 0.5);
+    const group = c.close >= c.open ? up : down;
+    group.push({
+      x,
+      y: (Math.min(c.open, c.close) - lo) * scale,
+      width: layout.bodyWidth,
+      height: Math.max(layout.minBody, Math.abs(c.close - c.open) * scale),
+    });
+    group.push({
+      x,
+      y: (c.low - lo) * scale,
+      width: layout.wickWidth,
+      height: (c.high - c.low) * scale,
+    });
+  });
+  return { up, down };
+}
