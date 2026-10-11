@@ -24,7 +24,10 @@ function pad(n: number): string {
 export function HopBar() {
   const mode = useSim((s) => s.mode);
   const reducedMotion = useSim((s) => s.reducedMotion);
+  const hasZone = useSim((s) => s.zone !== null);
   const { collapsed } = usePanelState();
+  // The panel is only beside the world when there is a zone to show.
+  const panelOpen = hasZone && !collapsed;
   const { layout, order, station, heading } = useStationIndex();
 
   const shown = mode === "rails" && layout !== null;
@@ -37,7 +40,7 @@ export function HopBar() {
       aria-label="Sites"
       aria-hidden={!shown}
       inert={!shown}
-      className={`hop sim-halo${motion}${collapsed ? "" : " hop-beside"}${
+      className={`hop${motion}${panelOpen ? " hop-beside" : ""}${
         shown ? "" : " hop-hidden"
       }`}
     >

@@ -134,6 +134,16 @@
  * smoothing on top would stretch every programmatic scroll.
  */
 
+/*
+ * In the simulator the page scrollbar is the rail's: kept, since dragging
+ * it rides the lap, but thin and in the terminal's colours rather than a
+ * grey system gutter beside the world.
+ */
+html:has([data-rail-spacer]) {
+  scrollbar-width: thin;
+  scrollbar-color: var(--t-dim) var(--t-bg0);
+}
+
 body {
   @apply bg-bg font-sans text-text antialiased;
   /* Full-bleed breakouts (projects showcase) must not create horizontal scroll. */
@@ -171,12 +181,15 @@ body {
  * The project panel is a terminal window: the bamboo palette, one mono
  * face, an active-window border the way a tiling compositor draws one, a
  * prompt line, markdown rendered the way glow renders it, and a tmux
- * status line with the districts as windows.
+ * status line with the districts as windows. The window shrinks to its
+ * aside's max height and no further, so the body scrolls between a title
+ * bar and a status line that stay put.
  */
 .term {
   display: flex;
-  height: 100%;
+  min-height: 0;
   width: 100%;
+  flex: 0 1 auto;
   flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--t-green);
@@ -192,6 +205,7 @@ body {
 
 .term-bar {
   display: flex;
+  flex: none;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
@@ -207,7 +221,9 @@ body {
 }
 
 .term-btn {
+  flex: none;
   border-radius: 4px;
+  white-space: nowrap;
   padding: 0 0.4rem;
   color: var(--t-muted);
   transition:
@@ -224,6 +240,7 @@ body {
   min-height: 0;
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 0.9rem 1.25rem 1.25rem;
   scrollbar-width: thin;
   scrollbar-color: var(--t-bg3) transparent;
@@ -301,6 +318,12 @@ body {
   color: var(--t-muted);
 }
 
+/* A path too long even for its slashes still breaks rather than overflow. */
+.term-links dd {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
 .term-links a {
   color: var(--t-blue);
   text-decoration: underline;
@@ -327,6 +350,7 @@ body {
 
 .term-status {
   display: flex;
+  flex: none;
   align-items: center;
   gap: 1.2ch;
   overflow: hidden;
@@ -378,9 +402,9 @@ body {
 
 /*
  * The hop bar: prev and next along the lap in bare type over the world,
- * no frame. A halo in the terminal background keeps it legible over a
- * bright sky and dark rock alike. Beside the open panel it centres over
- * the world that is left, on the line of the panel's title bar.
+ * no frame, on the top edge's ground (below). Beside the open panel it
+ * centres over the world that is left, on the line of the panel's title
+ * bar.
  */
 .hop {
   position: fixed;
@@ -401,8 +425,56 @@ body {
 }
 
 /*
- * Bare type over the world: a halo in the terminal background, tight and
- * then wide, so a line reads over a bright sky and dark rock alike.
+ * The world's two text edges get a ground instead of a frame: the
+ * terminal background fading into the scene along the top, the way a
+ * tab line sits over a buffer, and the same fade rising from the bottom
+ * under the hint lines. Bare type then reads over a bright sky and dark
+ * rock alike. The top one spans the screen whatever the bar's extent and
+ * goes with the bar; the open panel covers its left end.
+ */
+.hop::before,
+.sim-foot {
+  position: fixed;
+  right: 0;
+  left: 0;
+  height: 5rem;
+  pointer-events: none;
+  --scrim: color-mix(in srgb, var(--t-bg0) 72%, transparent);
+  --scrim-mid: color-mix(in srgb, var(--t-bg0) 52%, transparent);
+  --scrim-low: color-mix(in srgb, var(--t-bg0) 20%, transparent);
+  --scrim-tail: color-mix(in srgb, var(--t-bg0) 5%, transparent);
+}
+
+.hop::before {
+  top: 0;
+  z-index: -1;
+  content: "";
+  background: linear-gradient(
+    to bottom,
+    var(--scrim) 0%,
+    var(--scrim-mid) 40%,
+    var(--scrim-low) 70%,
+    var(--scrim-tail) 88%,
+    transparent 100%
+  );
+}
+
+.sim-foot {
+  bottom: 0;
+  z-index: 10;
+  background: linear-gradient(
+    to top,
+    var(--scrim) 0%,
+    var(--scrim-mid) 40%,
+    var(--scrim-low) 70%,
+    var(--scrim-tail) 88%,
+    transparent 100%
+  );
+}
+
+/*
+ * Bare type over the world, where a line is not on one of those edges: a
+ * halo in the terminal background, tight and then wide.
  */
 .sim-halo {
   text-shadow:
@@ -427,6 +499,7 @@ body {
 .hop-btn {
   display: flex;
   min-width: 0;
+  max-width: 100%;
   min-height: 44px;
   align-items: center;
   gap: 1.2ch;
@@ -479,11 +552,12 @@ body {
 .hop-count {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  color: var(--t-fg);
 }
 
 .hop-of {
   padding-inline: 0.6ch;
-  color: var(--t-dim);
+  color: var(--t-muted);
 }
 
 @media (max-width: 399px) {

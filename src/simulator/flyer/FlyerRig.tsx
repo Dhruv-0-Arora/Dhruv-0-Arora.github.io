@@ -1,8 +1,8 @@
 import { useFrame } from "@react-three/fiber";
-import { type RefObject, useEffect, useMemo } from "react";
+import { type RefObject, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-import { useSim } from "../simStore.ts";
-import type { Rgba } from "../theme/palette.ts";
+import { frame, useSim } from "../simStore.ts";
+import { flyerColors, toColor } from "./flyerColors.ts";
 import {
   bladeGeometry,
   paintFabric,
@@ -28,6 +28,8 @@ const PERCH_SPIN = 0.09;
 const PERCH_SWAY = 0.12;
 const PROP_IDLE = 0.8;
 const PROP_FLYING = 38;
+/** How fast the props wind down after a crash, 1/s. */
+const PROP_STOP = 5;
 
 const SPAN = 12.3;
 const CHORD = 2.0;
@@ -46,10 +48,6 @@ const PROP_Y = 0.95;
 const PROP_Z = -1.4;
 const ENGINE = new THREE.Vector3(0.55, 0.3, -0.15);
 const SPROCKET = new THREE.Vector3(0.55, 0.3, -0.82);
-
-function toColor(rgb: Rgba, out = new THREE.Color()): THREE.Color {
-  return out.setRGB(rgb.r, rgb.g, rgb.b, THREE.SRGBColorSpace);
-}
 
 interface Materials {
   fabric: THREE.MeshStandardMaterial;
@@ -538,27 +536,14 @@ export function FlyerRig({ rigRef }: FlyerRigProps) {
 
   useEffect(() => {
     if (!palette) return;
-    const night = palette.bg.r < 0.5;
+    const c = flyerColors(palette);
     const m = built.materials;
-    // Unbleached muslin: the snow tone warmed a touch toward amber.
-    toColor(palette.snow, m.fabric.color).lerp(
-      toColor(palette["hue-amber"]),
-      night ? 0.04 : 0.07,
-    );
-    m.fabric.emissive.copy(m.fabric.color);
-    m.fabric.emissiveIntensity = night ? 0.1 : 0;
-    // Varnished spruce: amber pulled toward the warm surface tone by day
-    // (a pale tan), toward the text tone at night.
-    toColor(
-      night ? palette["hue-amber"] : palette["hue-amber-vivid"],
-      m.wood.color,
-    ).lerp(
-      toColor(night ? palette.text : palette["surface-2"]),
-      night ? 0.25 : 0.45,
-    );
-    // Cast iron and aluminium: a dark grey rather than the text black.
-    toColor(palette.text, m.metal.color).lerp(toColor(palette.muted), 0.5);
-    toColor(palette.text, m.cloth.color).lerp(toColor(palette.muted), 0.15);
+    m.fabric.color.copy(c.fabric);
+    m.fabric.emissive.copy(c.fabric);
+    m.fabric.emissiveIntensity = c.night ? 0.1 : 0;
+    m.wood.color.copy(c.wood);
+    m.metal.color.copy(c.metal);
+    m.cloth.color.copy(c.cloth);
     toColor(palette.text, m.wire.color);
   }, [palette, built]);
 
@@ -576,17 +561,17 @@ export function FlyerRig({ rigRef }: FlyerRigProps) {
     };
   }, [built]);
 
+  /** Current prop speed, rad/s, so a crash winds them down. */
+  const spin = useRef(PROP_IDLE);
+
   useFrame((state, dt) => {
-    if (reducedMotion) return;
-    const rate = mode === "flying" ? PROP_FLYING : PROP_IDLE;
-    built.props.forEach((p, i) => {
-      p.rotation.z += (i === 0 ? rate : -rate) * dt;
-    });
-    // Hung over the pad, it turns and sways gently on its cables.
+    // Hung over the pad, it turns and sways gently on its cables; under
+    // reduced motion it just hangs there, still.
     const rig = rigRef.current;
     if (rig && mode !== "flying" && mode !== "returning") {
-      const t = state.clock.elapsedTime;
+      const t = reducedMotion ? 0 : state.clock.elapsedTime;
       rig.position.copy(FLYER_PERCH);
+      rig.scale.setScalar(1);
       rig.rotation.set(
         Math.sin(t * 0.5) * 0.02,
         t * PERCH_SPIN,
@@ -594,6 +579,20 @@ export function FlyerRig({ rigRef }: FlyerRigProps) {
         "YXZ",
       );
     }
+    if (reducedMotion) return;
+    const goal = frame.crash.wreck
+      ? 0
+      : mode === "flying"
+        ? PROP_FLYING
+        : PROP_IDLE;
+    // Spinning up is instant, as before; a crash winds them down.
+    spin.current =
+      goal < spin.current
+        ? goal + (spin.current - goal) * Math.exp(-PROP_STOP * dt)
+        : goal;
+    built.props.forEach((p, i) => {
+      p.rotation.z += (i === 0 ? spin.current : -spin.current) * dt;
+    });
   });
 
   return (

@@ -5,6 +5,7 @@ import {
   attachScroller,
   keyHop,
   scroller,
+  scrollMax,
   scrollProgress,
 } from "./scroller.ts";
 import { railFromScroll } from "./stations.ts";
@@ -138,8 +139,24 @@ export function useInputs(): void {
     updateKeyboard();
     mql.addEventListener("change", updateKeyboard);
 
+    // The page is RAIL_SCREENS viewports tall, so a resize changes what a
+    // pixel of scroll means; the scroll is put back to the same fraction,
+    // or a resized window (or a phone's URL bar) would move the train.
+    let progress = scrollProgress();
     const onScroll = () => {
+      progress = scrollProgress();
       frame.scrollT = scrollTargetT();
+    };
+    const onResize = () => {
+      // A hop in flight is aimed in old pixels: restart it in the new ones.
+      const heading = scroller.heading;
+      scroller.cancel();
+      const top = progress * scrollMax();
+      if (Math.abs(window.scrollY - top) >= 1) {
+        window.scrollTo({ top, behavior: "instant" });
+      }
+      frame.scrollT = scrollTargetT();
+      if (heading !== null) scroller.jumpTo(heading);
     };
 
     // Wheel: one hop per gesture. Pinch-zoom (ctrl+wheel) and the panel's
@@ -318,7 +335,7 @@ export function useInputs(): void {
     onScroll();
     const detachScroller = attachScroller();
     window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
+    window.addEventListener("resize", onResize);
     window.addEventListener("wheel", onWheel, { passive: false });
     window.addEventListener("touchstart", onTouchStart, { passive: true });
     window.addEventListener("touchmove", onTouchMove, { passive: false });
@@ -336,7 +353,7 @@ export function useInputs(): void {
       mql.removeEventListener("change", updateKeyboard);
       detachScroller();
       window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
+      window.removeEventListener("resize", onResize);
       window.removeEventListener("wheel", onWheel);
       window.removeEventListener("touchstart", onTouchStart);
       window.removeEventListener("touchmove", onTouchMove);

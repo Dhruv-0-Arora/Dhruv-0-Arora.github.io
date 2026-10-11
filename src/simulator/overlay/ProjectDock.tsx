@@ -1,4 +1,4 @@
-import { useEffect, useId } from "react";
+import { Fragment, useEffect, useId } from "react";
 import { guide } from "../../content/guide";
 import { projects } from "../../content/projects";
 import type { Project } from "../../content/types";
@@ -6,7 +6,7 @@ import type { Hue } from "../../lib/hues";
 import { scroller } from "../controls/scroller.ts";
 import { useSim } from "../simStore.ts";
 import type { ZoneSlug } from "../world/contract.ts";
-import { panel, usePanelState } from "./panelState.ts";
+import { PANEL_ATTR, panel, usePanelState } from "./panelState.ts";
 import { useStationIndex } from "./useStationIndex.ts";
 import { WINDOWS, windowName, ZONE_DISTRICT } from "./zoneDistrict.ts";
 
@@ -35,11 +35,27 @@ function hostOf(url: string): string {
   return url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
 }
 
+/**
+ * A link as its host and path. On a narrow panel it wraps after a slash,
+ * the way a terminal user would read it, and the arrow stays with the
+ * last segment.
+ */
 function Link({ href }: { href: string }) {
+  const parts = hostOf(href).split("/");
   return (
     <a href={href} target="_blank" rel="noreferrer">
-      {hostOf(href)}
-      <span aria-hidden="true"> ↗</span>
+      {parts.map((part, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: segments are positional
+        <Fragment key={i}>
+          {i > 0 ? (
+            <>
+              /<wbr />
+            </>
+          ) : null}
+          {part}
+        </Fragment>
+      ))}
+      <span aria-hidden="true">{"\u00a0"}↗</span>
     </a>
   );
 }
@@ -220,10 +236,11 @@ export function ProjectPanel() {
     <>
       <aside
         id={id}
+        {...{ [PANEL_ATTR]: "" }}
         aria-live="polite"
         aria-hidden={collapsed || hidden}
         hidden={hidden}
-        className={`pointer-events-none fixed z-20 flex transition-transform ease-out ${motion} inset-x-3 bottom-3 max-h-[54vh] md:inset-x-auto md:top-5 md:bottom-auto md:left-5 md:max-h-[calc(100vh-5rem)] md:w-[min(44vw,41rem)] ${
+        className={`pointer-events-none fixed z-20 flex flex-col transition-transform ease-out ${motion} inset-x-3 bottom-3 max-h-[54dvh] md:inset-x-auto md:top-5 md:bottom-auto md:left-5 md:max-h-[calc(100dvh-5rem)] md:w-[min(44vw,41rem)] ${
           collapsed
             ? "translate-y-[calc(100%+1rem)] md:translate-x-[calc(-100%-1.5rem)] md:translate-y-0"
             : ""

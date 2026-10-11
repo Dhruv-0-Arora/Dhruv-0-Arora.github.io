@@ -2,10 +2,19 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { type RefObject, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { DOZER_YAW_OFFSET } from "../dozer/DozerRig.tsx";
+import {
+  CRASH,
+  popScale,
+  SafeTrail,
+  shakeAt,
+  startCrash,
+  stepWreck,
+} from "../flyer/crash.ts";
 import { FLYER_PERCH } from "../flyer/FlyerRig.tsx";
 import { ProximityTracker } from "../proximity/proximity.ts";
 import { frame, sim } from "../simStore.ts";
 import { contract } from "../world/contract.ts";
+import { flightFloor } from "../world/flightFloor.ts";
 import type { HeightGrid } from "../world/heightGrid.ts";
 import type { LoadedDistrict, WorldBase } from "../world/loadWorld.ts";
 import type { TerrainSampler } from "../world/terrainSampler.ts";
@@ -71,8 +80,14 @@ const FRAMING = {
    * sees it), 0..1.
    */
   alongRail: 0.3,
-  /** Height above the seat for the framed eye, m. */
+  /**
+   * Height above the seat for the framed eye, m: `up` at the full
+   * pull-back, rising to `upTight` at the shortest one. On a tight terrace
+   * the eye sits close to the train, so it climbs to look over the cars
+   * rather than across them, and they stay low in the frame.
+   */
   up: 4.5,
+  upTight: 6.5,
   /** Fully framed within this many metres of a station... */
   near: 4,
   /** ...and not at all beyond this many. */
@@ -99,7 +114,18 @@ const FLY = {
   up: 5,
   aimAhead: 14,
   follow: 4,
+  /**
+   * After a crash the follow point freezes at the impact: the eye eases
+   * back along the line of flight and up, to keep the wreck and the
+   * burst in frame, and holds there.
+   */
+  crashBack: 18,
+  crashUp: 14,
+  crashFollow: 1.6,
 } as const;
+
+/** Extra room around an installation's box before the Flyer hits it, m. */
+const FLIGHT_HIT_MARGIN = 1.2;
 
 /** The flyable circle stays inside the terrain disc (470 m). */
 const FLIGHT_RADIUS = 460;
@@ -185,14 +211,38 @@ export function CameraRig({
   const flight = useRef(
     createFlightState(FLYER_PERCH.x, FLYER_PERCH.y, FLYER_PERCH.z),
   );
-  const flightWorld = useMemo<FlightWorld>(
-    () => ({
-      floorHeight: (x, z) => (terrain ? terrain.heightAt(x, z) : 0),
+  const flightWorld = useMemo<FlightWorld>(() => {
+    const colliders = world.meta.colliders;
+    const m = FLIGHT_HIT_MARGIN;
+    return {
+      floorHeight: flightFloor(sampler, terrain, world.meta.lakes),
+      // A point (with a margin for the wings) inside any installation box.
+      hits(x, y, z) {
+        for (const box of colliders) {
+          if (Math.abs(y - box.center[1]) > box.half[1] + m) continue;
+          const c = Math.cos(box.yaw);
+          const sn = Math.sin(box.yaw);
+          const wx = x - box.center[0];
+          const wz = z - box.center[2];
+          if (
+            Math.abs(c * wx - sn * wz) < box.half[0] + m &&
+            Math.abs(sn * wx + c * wz) < box.half[2] + m
+          ) {
+            return true;
+          }
+        }
+        return false;
+      },
       radius: FLIGHT_RADIUS,
       ceiling: FLIGHT_CEILING,
-    }),
-    [terrain],
-  );
+    };
+  }, [world, terrain, sampler]);
+  /** Recent flight positions, for the relaunch after a crash. */
+  const safeTrail = useMemo(() => new SafeTrail(), []);
+  /** The crash shake added to the camera last frame, taken off this one. */
+  const shake = useMemo(() => new THREE.Vector3(), []);
+  /** The airframe was relaunched this frame: the chase camera cuts to it. */
+  const relaunchCut = useRef(false);
   const lastMode = useRef<ControlMode>("rails");
   /** Which vehicle the camera left from, for the glide back to the rail. */
   const vehicle = useRef<"dozer" | "flyer">("dozer");
@@ -229,6 +279,7 @@ export function CameraRig({
       desired: new THREE.Vector3(),
       up: new THREE.Vector3(0, 1, 0),
       v3: [0, 0, 0] as [number, number, number],
+      shake: [0, 0, 0] as [number, number, number],
     }),
     [],
   );
@@ -284,6 +335,9 @@ export function CameraRig({
       return;
     }
     const s = scratch;
+    const crash = frame.crash;
+    camera.position.sub(shake);
+    shake.set(0, 0, 0);
     // Reduced motion: every follow becomes an instant cut.
     const damp = snap.reducedMotion
       ? () => 1
@@ -321,18 +375,31 @@ export function CameraRig({
 
     // Mode changes: taking off starts the flight from wherever the Flyer
     // hangs, heading the way it was facing.
+    // A wreck left behind by Esc stays where it lies until the rails have
+    // the camera back, then the Flyer re-perches.
     if (snap.mode !== lastMode.current) {
       const rig = flyerRef.current;
       if (snap.mode === "flying" && rig) {
+        crash.wreck = false;
+        crash.relaunched = false;
+        rig.scale.setScalar(1);
         flight.current = createFlightState(
           rig.position.x,
           rig.position.y,
           rig.position.z,
           rig.rotation.y,
         );
+        safeTrail.reset(rig.position.x, rig.position.z);
         vehicle.current = "flyer";
       } else if (snap.mode === "driving") {
         vehicle.current = "dozer";
+      } else if (snap.mode === "rails") {
+        crash.wreck = false;
+      }
+      if (snap.mode !== "flying") {
+        crash.relaunched = false;
+        rig?.scale.setScalar(1);
+        if (snap.crashed) sim.set({ crashed: false });
       }
       lastMode.current = snap.mode;
     }
@@ -346,17 +413,63 @@ export function CameraRig({
     const flyerActive =
       snap.mode === "flying" ||
       (snap.mode === "returning" && vehicle.current === "flyer");
+    if (crash.active) {
+      crash.t += dt;
+      if (crash.t >= CRASH.effectEnd) crash.active = false;
+    }
     if (flyerActive) {
-      const f = advanceFlight(
-        flight.current,
-        snap.mode === "flying" ? frame.flight : IDLE_FLIGHT,
-        dt,
-        flightWorld,
-      );
       const rig = flyerRef.current;
+      if (!crash.wreck) {
+        const f = advanceFlight(
+          flight.current,
+          snap.mode === "flying" ? frame.flight : IDLE_FLIGHT,
+          dt,
+          flightWorld,
+        );
+        if (f.crashed) {
+          startCrash(
+            crash,
+            { ...f, kind: f.crashed },
+            flightWorld.floorHeight(f.x, f.z),
+            Math.random() * 1000,
+          );
+          if (snap.mode === "flying") sim.set({ crashed: true });
+        } else if (snap.mode === "flying") {
+          safeTrail.record(f.x, f.z, dt);
+        }
+      } else {
+        stepWreck(crash.body, dt, flightWorld.floorHeight);
+        // Relaunch: a fresh airframe above where it was a few seconds ago,
+        // heading for the hub at cruise speed.
+        if (snap.mode === "flying" && crash.t >= CRASH.duration) {
+          const r = safeTrail.relaunch(flight.current.yaw);
+          const y = Math.min(
+            FLIGHT_CEILING - 10,
+            flightWorld.floorHeight(r.x, r.z) + CRASH.relaunchHeight,
+          );
+          flight.current = createFlightState(r.x, y, r.z, r.yaw);
+          safeTrail.reset(r.x, r.z);
+          crash.wreck = false;
+          crash.relaunched = true;
+          relaunchCut.current = true;
+          sim.set({ crashed: false });
+        }
+      }
       if (rig) {
-        rig.position.set(f.x, f.y, f.z);
-        rig.rotation.set(-f.pitch, f.yaw, f.roll, "YXZ");
+        if (crash.wreck) {
+          const b = crash.body;
+          rig.position.set(b.x, b.y, b.z);
+          rig.rotation.set(-b.pitch, b.yaw, b.roll, "YXZ");
+        } else {
+          const f = flight.current;
+          rig.position.set(f.x, f.y, f.z);
+          rig.rotation.set(-f.pitch, f.yaw, f.roll, "YXZ");
+          rig.scale.setScalar(
+            crash.relaunched
+              ? popScale(crash.t - CRASH.duration, snap.reducedMotion)
+              : 1,
+          );
+        }
       }
     }
 
@@ -446,6 +559,9 @@ export function CameraRig({
           FRAMING.backMax,
           Math.max(FRAMING.backMin, s.dir.length() * FRAMING.backPerMeter),
         );
+        const tight =
+          (FRAMING.backMax - back) / (FRAMING.backMax - FRAMING.backMin);
+        const up = FRAMING.up + (FRAMING.upTight - FRAMING.up) * tight;
         s.dir.normalize();
         s.forward
           .multiplyScalar(FRAMING.alongRail)
@@ -455,7 +571,7 @@ export function CameraRig({
         s.target
           .copy(s.pos)
           .addScaledVector(s.forward, back)
-          .setY(s.pos.y + FRAMING.up);
+          .setY(s.pos.y + up);
         s.pos.lerp(s.target, w);
       }
       probeX = s.aim.x;
@@ -473,6 +589,24 @@ export function CameraRig({
 
       camera.position.copy(s.pos);
       target.lerp(s.desired, damp(RAILS.aimFollow));
+    } else if (snap.mode === "flying" && crash.wreck) {
+      // Down: the follow point stays at the impact, the eye eases back and
+      // up from it, the aim tracks the tumbling wreck, and the first
+      // instant shakes.
+      const b = crash.body;
+      s.desired.set(
+        crash.x - crash.dirX * FLY.crashBack,
+        crash.y + FLY.crashUp,
+        crash.z - crash.dirZ * FLY.crashBack,
+      );
+      camera.position.lerp(s.desired, damp(FLY.crashFollow));
+      s.aim.set(b.x, b.y, b.z);
+      target.lerp(s.aim, damp(FLY.follow * 2));
+      shakeAt(crash.t, snap.reducedMotion, s.shake);
+      shake.set(s.shake[0], s.shake[1], s.shake[2]);
+      camera.position.add(shake);
+      probeX = b.x;
+      probeZ = b.z;
     } else if (snap.mode === "flying") {
       const f = flight.current;
       const cp = Math.cos(f.pitch);
@@ -483,9 +617,16 @@ export function CameraRig({
       );
       s.desired.set(f.x, f.y, f.z).addScaledVector(s.forward, -FLY.back);
       s.desired.y += FLY.up;
-      camera.position.lerp(s.desired, damp(FLY.follow));
       s.aim.set(f.x, f.y, f.z).addScaledVector(s.forward, FLY.aimAhead);
-      target.lerp(s.aim, damp(FLY.follow * 2));
+      if (relaunchCut.current) {
+        // A fresh airframe somewhere else: cut to it, no long glide over.
+        camera.position.copy(s.desired);
+        target.copy(s.aim);
+        relaunchCut.current = false;
+      } else {
+        camera.position.lerp(s.desired, damp(FLY.follow));
+        target.lerp(s.aim, damp(FLY.follow * 2));
+      }
       probeX = f.x;
       probeZ = f.z;
     } else if (snap.mode === "driving") {

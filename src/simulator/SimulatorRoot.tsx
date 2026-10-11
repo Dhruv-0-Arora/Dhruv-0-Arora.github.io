@@ -58,6 +58,7 @@ function SimulatorShell({ reducedMotion }: { reducedMotion: boolean }) {
         aria-hidden="true"
         data-rail-spacer
       />
+      <div className="sim-foot" aria-hidden="true" />
       <HUD />
       <HopBar />
       <ProjectPanel />

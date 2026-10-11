@@ -11,13 +11,16 @@ import {
 import type * as THREE from "three";
 import { useCanvasActive } from "../lib/useCanvasActive";
 import { CameraRig } from "./controls/CameraRig.tsx";
+import { ViewOffset } from "./controls/ViewOffset.tsx";
 import { DozerRig } from "./dozer/DozerRig.tsx";
+import { CrashEffect } from "./flyer/CrashEffect.tsx";
 import { FlyerRig } from "./flyer/FlyerRig.tsx";
 import { RailTrack } from "./rail/RailTrack.tsx";
 import { Train } from "./rail/Train.tsx";
 import { sim } from "./simStore.ts";
 import { useRetint } from "./theme/useRetint.ts";
 import type { District, ZoneSlug } from "./world/contract.ts";
+import { flightFloor } from "./world/flightFloor.ts";
 import { heightGridFromObject } from "./world/heightGrid.ts";
 import { BambooGrove } from "./world/instancing/BambooGrove.tsx";
 import { CameraFrusta } from "./world/instancing/CameraFrusta.tsx";
@@ -85,6 +88,11 @@ function WorldScene() {
   const sampler = useMemo(
     () => (backdrop ? terrainSamplerFromObject(backdrop) : null),
     [backdrop],
+  );
+  // The surface the Flyer can crash into, for the debris to land on.
+  const crashGround = useMemo(
+    () => flightFloor(sampler, terrain, world.meta.lakes),
+    [sampler, terrain, world.meta],
   );
   // Trails and lake shores, painted by the terrain and avoided by the trees.
   const trailMask = useMemo(
@@ -174,6 +182,7 @@ function WorldScene() {
         />
       ) : null}
       <FlyerRig rigRef={flyerRef} />
+      <CrashEffect groundAt={crashGround} />
       <RailTrack rail={world.rail} />
       <Train rail={world.rail} />
       <PhotoCarousel onMount={onShared} />
@@ -202,6 +211,7 @@ function WorldScene() {
         terrain={terrain}
         sampler={sampler}
       />
+      <ViewOffset />
     </>
   );
 }

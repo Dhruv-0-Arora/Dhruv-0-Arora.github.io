@@ -8,6 +8,7 @@ import { DragLook } from "./controls/dragLook.ts";
 import type { DriveInput } from "./controls/driveController.ts";
 import { type FlightInput, IDLE_FLIGHT } from "./controls/flightController.ts";
 import type { ScrollLayout } from "./controls/stations.ts";
+import { type CrashState, createCrashState } from "./flyer/crash.ts";
 import type { Palette } from "./theme/palette.ts";
 import type { District, ZoneSlug } from "./world/contract.ts";
 
@@ -30,6 +31,8 @@ export interface SimSnapshot {
   palette: Palette | null;
   /** The Dozer left the world and is being put back on the nearest rail point. */
   signalLost: boolean;
+  /** The Flyer went down and a fresh one is about to be launched. */
+  crashed: boolean;
   stats: { fps: number; calls: number; triangles: number };
 }
 
@@ -53,6 +56,8 @@ export interface FrameState {
   railT: number;
   /** Where attention is: the camera aim on rails, the Dozer when driving. */
   probe: [number, number, number];
+  /** The Flyer's crash sequence; idle until it hits something. */
+  crash: CrashState;
 }
 
 const initial: SimSnapshot = {
@@ -66,6 +71,7 @@ const initial: SimSnapshot = {
   reducedMotion: false,
   palette: null,
   signalLost: false,
+  crashed: false,
   stats: { fps: 0, calls: 0, triangles: 0 },
 };
 
@@ -81,6 +87,7 @@ export const frame: FrameState = {
   returnT: null,
   railT: 0,
   probe: [0, 0, 0],
+  crash: createCrashState(),
 };
 
 function emit() {
@@ -123,6 +130,7 @@ export const sim = {
     frame.returnT = null;
     frame.railT = 0;
     frame.probe = [0, 0, 0];
+    frame.crash = createCrashState();
     emit();
   },
 };

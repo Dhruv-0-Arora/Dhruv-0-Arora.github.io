@@ -17,6 +17,9 @@ export type PanelEvent =
 
 export const STORAGE_KEY = "sim.panel";
 
+/** Marks the panel's aside, so the world can measure what it covers. */
+export const PANEL_ATTR = "data-sim-panel";
+
 export function nextPanel(state: PanelState, event: PanelEvent): PanelState {
   switch (event.type) {
     case "toggle":
