@@ -1,24 +1,61 @@
 import { frame, sim } from "../simStore.ts";
-import { jumpTarget, plateauCentre, snapTarget } from "./stations.ts";
+import { jumpTarget, plateauCentre, railFromScroll } from "./stations.ts";
 
-/** Length of a station-to-station scroll tween, ms. */
-export const JUMP_MS = 700;
-/** Quiet time after the last scroll before the snap assist steps in, ms. */
-export const SNAP_IDLE_MS = 150;
+/**
+ * How long a hop takes. A hop is a ride, not a cut: it scales with the
+ * metres of rail it covers, so a short hop between neighbours is quick
+ * and a long leg round the range takes longer, inside fixed bounds.
+ */
+export const HOP = {
+  minMs: 1100,
+  maxMs: 2600,
+  msPerMeter: 2.4,
+} as const;
+
+/**
+ * How far the page may sit from where the tween last put it before the
+ * tween decides someone else is scrolling, px. Browsers round scroll
+ * positions to device pixels, so this is a little more than one.
+ */
+const FOREIGN_SCROLL_PX = 3;
+
+/** Duration of a hop covering `metres` of rail, ms. */
+export function hopDuration(metres: number): number {
+  const ms = HOP.minMs + Math.abs(metres) * HOP.msPerMeter;
+  return Math.min(HOP.maxMs, Math.max(HOP.minMs, ms));
+}
 
 /** Keys that jump to the next or previous station while on rails. */
 export const NEXT_KEYS: ReadonlySet<string> = new Set([
   "ArrowRight",
+  "ArrowDown",
+  "PageDown",
+  "Space",
   "KeyN",
   "BracketRight",
   "KeyJ",
 ]);
 export const PREV_KEYS: ReadonlySet<string> = new Set([
   "ArrowLeft",
+  "ArrowUp",
+  "PageUp",
   "KeyP",
   "BracketLeft",
   "KeyK",
 ]);
+
+/** What a key asks of the rails: a hop, the first station, the last, or nothing. */
+export type KeyHop = 1 | -1 | "first" | "last" | null;
+
+/** Maps a key press to a station move. Shift+Space goes back, like a page. */
+export function keyHop(code: string, shiftKey = false): KeyHop {
+  if (code === "Space") return shiftKey ? -1 : 1;
+  if (code === "Home") return "first";
+  if (code === "End") return "last";
+  if (NEXT_KEYS.has(code)) return 1;
+  if (PREV_KEYS.has(code)) return -1;
+  return null;
+}
 
 /** How far the page can scroll, px. */
 export function scrollMax(): number {
@@ -43,8 +80,6 @@ export interface ScrollHost {
   now(): number;
   requestFrame(cb: (now: number) => void): number;
   cancelFrame(id: number): void;
-  setTimer(cb: () => void, ms: number): number;
-  clearTimer(id: number): void;
 }
 
 function browserHost(): ScrollHost {
@@ -55,30 +90,59 @@ function browserHost(): ScrollHost {
     now: () => performance.now(),
     requestFrame: (cb) => requestAnimationFrame(cb),
     cancelFrame: (id) => cancelAnimationFrame(id),
-    setTimer: (cb, ms) => window.setTimeout(cb, ms),
-    clearTimer: (id) => window.clearTimeout(id),
   };
 }
 
-function easeInOutCubic(u: number): number {
+export function easeInOutCubic(u: number): number {
   return u < 0.5 ? 4 * u * u * u : 1 - (-2 * u + 2) ** 3 / 2;
 }
 
 /**
- * Moves the page between stations: a short eased scroll tween for the
- * next/previous keys and buttons, and a snap assist that finishes a leg
- * the visitor left half done. One instance owns the state so the two can
- * never fight: a jump suppresses the snap, and any input cancels both.
+ * A hop in flight, as a curve over normalised time u in [0, 1]. A fresh
+ * hop eases in and out; a hop chained onto one already moving starts at
+ * the speed the page is going (a cubic Hermite with that start slope), so
+ * pressing next twice never stalls the ride in between.
+ */
+interface Tween {
+  from: number;
+  to: number;
+  start: number;
+  duration: number;
+  /** Start slope, px per unit u; 0 for a fresh hop. */
+  v0: number;
+}
+
+function tweenAt(tw: Tween, u: number): number {
+  if (tw.v0 === 0) return tw.from + (tw.to - tw.from) * easeInOutCubic(u);
+  const u2 = u * u;
+  const u3 = u2 * u;
+  const y =
+    tw.from + (tw.to - tw.from) * (3 * u2 - 2 * u3) + tw.v0 * (u3 - 2 * u2 + u);
+  // Never past the destination, whatever the start slope.
+  return tw.to >= tw.from ? Math.min(y, tw.to) : Math.max(y, tw.to);
+}
+
+/** Page speed of a tween at a time, px per ms. */
+function tweenSpeed(tw: Tween, now: number): number {
+  const u = (now - tw.start) / tw.duration;
+  if (u <= 0 || u >= 1) return 0;
+  const h = Math.min(1e-3, 1 - u);
+  return (tweenAt(tw, u + h) - tweenAt(tw, u)) / (h * tw.duration);
+}
+
+/**
+ * Moves the page between stations: an eased scroll tween per hop, whose
+ * length follows the metres of rail it covers. The page scroll is only
+ * ever moved by a hop on rails, so it always rests on a plateau unless a
+ * tween is running or the visitor drags the scrollbar.
  * Only ever acts on rails; the vehicles own the keys otherwise.
  */
 export class Scroller {
   private readonly host: ScrollHost;
   private rafId = 0;
-  private timerId = 0;
+  private tween: Tween | null = null;
   /** Station the tween in flight is heading for; null when idle. */
   private destination: number | null = null;
-  /** A pointer is down (a scrollbar drag, a touch): never snap under it. */
-  private pointerDown = false;
 
   constructor(host: ScrollHost) {
     this.host = host;
@@ -86,6 +150,11 @@ export class Scroller {
 
   get tweening(): boolean {
     return this.destination !== null;
+  }
+
+  /** Station the hop in flight is heading for, or null when idle. */
+  get heading(): number | null {
+    return this.destination;
   }
 
   /** Current scroll fraction, 0..1. */
@@ -108,72 +177,65 @@ export class Scroller {
     );
   }
 
-  /** Scroll to the middle of a station's plateau. */
+  /** Ride to the middle of a station's plateau. */
   jumpTo(index: number): void {
     const layout = frame.layout;
     if (!layout || sim.get().mode !== "rails") return;
     const i = Math.max(0, Math.min(layout.stations.length - 1, index));
+    if (i === this.destination) return;
     this.tweenTo(plateauCentre(layout, i) * this.host.scrollMax(), i);
   }
 
   /** Cancel whatever is in flight; the page stays where it is. */
   cancel(): void {
     this.host.cancelFrame(this.rafId);
-    this.host.clearTimer(this.timerId);
+    this.tween = null;
     this.destination = null;
   }
 
-  /**
-   * Called on every page scroll. The tween's own scrolls are ignored so
-   * it never arms the assist against itself; any other scroll restarts
-   * the idle clock.
-   */
-  onScroll(): void {
-    if (this.tweening) return;
-    this.host.clearTimer(this.timerId);
-    this.timerId = this.host.setTimer(() => this.snap(), SNAP_IDLE_MS);
-  }
-
-  /** A cancelling input: wheel, touch, pointer or key. */
-  onInput(): void {
-    this.cancel();
-  }
-
-  onPointerDown(): void {
-    this.pointerDown = true;
-    this.cancel();
-  }
-
-  onPointerUp(): void {
-    this.pointerDown = false;
-  }
-
-  /** Finish a half-done leg toward the nearer station. */
-  private snap(): void {
-    const layout = frame.layout;
-    const state = sim.get();
-    if (!layout || state.mode !== "rails" || state.reducedMotion) return;
-    if (this.tweening || this.pointerDown) return;
-    const index = snapTarget(this.progress(), layout);
-    if (index === null) return;
-    this.tweenTo(plateauCentre(layout, index) * this.host.scrollMax(), index);
-  }
-
   private tweenTo(to: number, index: number): void {
+    const layout = frame.layout;
+    const now = this.host.now();
+    const carried = this.tween ? tweenSpeed(this.tween, now) : 0;
     this.cancel();
     const from = this.host.scrollY();
     if (sim.get().reducedMotion || Math.abs(to - from) < 1) {
       this.host.scrollTo(to);
       return;
     }
+    const max = this.host.scrollMax();
+    const metres =
+      layout && max > 0
+        ? Math.abs(
+            layout.stations[index].t -
+              railFromScroll(Math.min(1, Math.max(0, from / max)), layout),
+          ) * layout.railLength
+        : 0;
+    const duration = hopDuration(metres);
+    // Only carry speed that points the way this hop goes.
+    const v0 =
+      Math.sign(carried) === Math.sign(to - from) ? carried * duration : 0;
+    const tw: Tween = { from, to, start: now, duration, v0 };
+    this.tween = tw;
     this.destination = index;
-    const start = this.host.now();
-    const step = (now: number) => {
-      const u = Math.min(1, (now - start) / JUMP_MS);
-      this.host.scrollTo(from + (to - from) * easeInOutCubic(u));
+    let set = from;
+    const step = (t: number) => {
+      // Someone else moved the page (a scrollbar drag, find-in-page), or
+      // the visitor took a vehicle: the hop gives way rather than fight.
+      if (
+        sim.get().mode !== "rails" ||
+        Math.abs(this.host.scrollY() - set) > FOREIGN_SCROLL_PX
+      ) {
+        this.cancel();
+        return;
+      }
+      const u = Math.min(1, Math.max(0, (t - tw.start) / tw.duration));
+      set = tweenAt(tw, u);
+      this.host.scrollTo(set);
       if (u < 1) {
         this.rafId = this.host.requestFrame(step);
       } else {
+        this.tween = null;
         this.destination = null;
       }
     };
@@ -185,36 +247,12 @@ export class Scroller {
 export const scroller = new Scroller(browserHost());
 
 /**
- * Wires the scroller to the page. Cancellation listens to inputs only,
- * never to scroll itself, so the tween cannot cancel its own motion; the
- * jump keys are left alone so a key press does not cancel the jump it
- * just started.
+ * Wires the scroller to the page and returns its teardown. Nothing
+ * outside cancels a hop any more: the wheel and touch are the hops
+ * themselves (see `useInputs`), and the momentum tail of the gesture that
+ * started one must never stop it. The tween gives way on its own when
+ * something else moves the page or the visitor leaves the rails.
  */
 export function attachScroller(target: Scroller = scroller): () => void {
-  const onScroll = () => target.onScroll();
-  const onInput = () => target.onInput();
-  const onKey = (e: KeyboardEvent) => {
-    if (NEXT_KEYS.has(e.code) || PREV_KEYS.has(e.code)) return;
-    target.onInput();
-  };
-  const onPointerDown = () => target.onPointerDown();
-  const onPointerUp = () => target.onPointerUp();
-  const passive = { passive: true } as const;
-  window.addEventListener("scroll", onScroll, passive);
-  window.addEventListener("wheel", onInput, passive);
-  window.addEventListener("touchstart", onInput, passive);
-  window.addEventListener("keydown", onKey, passive);
-  window.addEventListener("pointerdown", onPointerDown, passive);
-  window.addEventListener("pointerup", onPointerUp, passive);
-  window.addEventListener("pointercancel", onPointerUp, passive);
-  return () => {
-    target.cancel();
-    window.removeEventListener("scroll", onScroll);
-    window.removeEventListener("wheel", onInput);
-    window.removeEventListener("touchstart", onInput);
-    window.removeEventListener("keydown", onKey);
-    window.removeEventListener("pointerdown", onPointerDown);
-    window.removeEventListener("pointerup", onPointerUp);
-    window.removeEventListener("pointercancel", onPointerUp);
-  };
+  return () => target.cancel();
 }

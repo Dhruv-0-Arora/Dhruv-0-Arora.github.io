@@ -4,10 +4,10 @@ import { projects } from "../../content/projects";
 import type { Project } from "../../content/types";
 import type { Hue } from "../../lib/hues";
 import { scroller } from "../controls/scroller.ts";
-import { projectOrder } from "../controls/stations.ts";
-import { frame, useSim } from "../simStore.ts";
-import { ZONE_SLUGS, type ZoneSlug } from "../world/contract.ts";
+import { useSim } from "../simStore.ts";
+import type { ZoneSlug } from "../world/contract.ts";
 import { panel, usePanelState } from "./panelState.ts";
+import { useStationIndex } from "./useStationIndex.ts";
 import { WINDOWS, windowName, ZONE_DISTRICT } from "./zoneDistrict.ts";
 
 /** Zone slug to catalog entry; the hub has none and shows the guide. */
@@ -30,8 +30,6 @@ const TERM_HUE: Record<Hue, string> = {
 export function termHue(hue?: Hue): string {
   return hue ? TERM_HUE[hue] : "var(--t-green)";
 }
-
-const PROJECT_ZONES = ZONE_SLUGS.filter((z) => z !== "hub");
 
 function hostOf(url: string): string {
   return url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
@@ -142,12 +140,8 @@ function ProjectBody({ project, hue }: { project: Project; hue: string }) {
  */
 function StatusLine({ zone }: { zone: ZoneSlug }) {
   const district = ZONE_DISTRICT[zone];
-  // The layout is published once the world meta is in, before any zone can
-  // be entered, so by the time this renders it is there; the contract order
-  // is the fallback for the one render that could precede it.
-  const order: readonly ZoneSlug[] = frame.layout
-    ? projectOrder(frame.layout)
-    : PROJECT_ZONES;
+  // The riding order follows the layout as soon as the world meta is in.
+  const { order } = useStationIndex();
   const index = order.indexOf(zone);
   return (
     <footer className="term-status">

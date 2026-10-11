@@ -47,3 +47,30 @@ export const guide: Guide = {
   outro:
     "Each site opens this panel with the project you are next to. The photos above the pad are from the Cascades, and the range borrows its peaks: astute sits on the summit of Adams, Synthesis on the shoulder of Rainier. Mount Adams is climbed; Rainier is next. The range runs in daylight or at night to match the hour on your clock.",
 };
+
+/** One line of the first-visit note: a key and what it does. */
+export interface VehicleLine {
+  key: string;
+  text: string;
+}
+
+export interface VehiclesNote {
+  /** The command the note pretends to have run. */
+  command: string;
+  lines: VehicleLine[];
+  dismiss: string;
+}
+
+/**
+ * The note that tells a first-time visitor with a keyboard that the two
+ * vehicles on the pad can be taken out. Shown once, bottom right.
+ */
+export const vehiclesNote: VehiclesNote = {
+  command: "sim --vehicles",
+  lines: [
+    { key: "T", text: "fly the biplane" },
+    { key: "F", text: "drive the Dozer" },
+    { key: "Esc", text: "back to the train" },
+  ],
+  dismiss: "Dismiss the vehicles note",
+};

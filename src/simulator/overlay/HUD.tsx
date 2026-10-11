@@ -1,4 +1,5 @@
 import { sim, useSim } from "../simStore.ts";
+import { VehiclesNote } from "./VehiclesNote.tsx";
 
 const mono = "font-mono text-[12px] leading-5 text-muted";
 
@@ -18,7 +19,8 @@ export function HUD() {
 
   return (
     <div className="pointer-events-none fixed inset-0 z-20">
-      <div className="absolute right-5 bottom-5 flex flex-col items-end gap-2 text-right">
+      <div className="sim-halo absolute right-5 bottom-5 flex flex-col items-end gap-2 text-right md:max-w-[calc(100vw-min(44vw,41rem)-4rem)]">
+        <VehiclesNote />
         {import.meta.env.DEV && worldReady ? (
           <p className={`${mono} text-faint`}>
             {stats.fps} fps / {stats.calls} calls / {stats.triangles} tris
@@ -41,9 +43,8 @@ export function HUD() {
           </p>
         ) : (
           <p className={mono}>
-            scroll to travel
-            <span className="text-faint"> · </span>
-            <span aria-hidden="true">← → </span>hop between sites
+            scroll or <span aria-hidden="true">← →</span>
+            <span className="sr-only">the arrow keys</span> to hop sites
             <span className="text-faint"> · </span>
             drag to look
             {canDrive ? (
@@ -71,7 +72,7 @@ export function HUD() {
       </div>
 
       <div
-        className="absolute bottom-5 left-1/2 -translate-x-1/2"
+        className="sim-halo absolute bottom-5 left-1/2 -translate-x-1/2"
         aria-live="polite"
       >
         {signalLost ? (

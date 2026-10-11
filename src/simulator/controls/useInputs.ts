@@ -3,12 +3,12 @@ import { frame, sim } from "../simStore.ts";
 import type { FlightInput } from "./flightController.ts";
 import {
   attachScroller,
-  NEXT_KEYS,
-  PREV_KEYS,
+  keyHop,
   scroller,
   scrollProgress,
 } from "./scroller.ts";
 import { railFromScroll } from "./stations.ts";
+import { WheelIntent } from "./wheelIntent.ts";
 
 /**
  * Screens of scroll for the full lap round the range. The stations layout
@@ -18,6 +18,38 @@ import { railFromScroll } from "./stations.ts";
 export const RAIL_SCREENS = 16;
 
 const KEYBOARD_QUERY = "(hover: hover) and (pointer: fine)";
+
+/** Vertical finger travel that makes a swipe a hop, px. */
+export const SWIPE_PX = 40;
+
+/**
+ * Whether an event target sits inside something that scrolls on its own
+ * (the project panel), and can still scroll in the direction asked
+ * (`dy` > 0 is down). Those keep their native wheel, touch and keys.
+ */
+export function insideScrollable(
+  target: EventTarget | null,
+  dy: number,
+): {
+  inside: boolean;
+  canScroll: boolean;
+} {
+  let el = target instanceof Element ? target : null;
+  while (el && el !== document.body && el !== document.documentElement) {
+    if (el.scrollHeight > el.clientHeight + 1) {
+      const overflow = getComputedStyle(el).overflowY;
+      if (overflow === "auto" || overflow === "scroll") {
+        const canScroll =
+          dy > 0
+            ? el.scrollTop + el.clientHeight < el.scrollHeight - 1
+            : el.scrollTop > 0;
+        return { inside: true, canScroll };
+      }
+    }
+    el = el.parentElement;
+  }
+  return { inside: false, canScroll: false };
+}
 
 const THROTTLE_KEYS: Record<string, number> = {
   KeyW: 1,
@@ -90,7 +122,11 @@ export function scrollTargetT(): number {
 /**
  * DOM side of the controls: scroll and a click-and-drag look feed the
  * rails camera, keys feed the drive and flight models, F, T and Escape
- * switch modes, and the next/previous keys hop between stations on rails.
+ * switch modes. On rails the wheel, a swipe and the page keys never
+ * scroll the page freely: each gesture is one hop to the next or previous
+ * station, so a trackpad flick and its momentum land on exactly one site.
+ * The page scroll stays the state the hop writes to, so a reload, the
+ * glide back from a vehicle and the scrollbar keep working.
  * Losing focus or the tab clears every held key so neither vehicle ever
  * drives itself.
  */
@@ -104,6 +140,66 @@ export function useInputs(): void {
 
     const onScroll = () => {
       frame.scrollT = scrollTargetT();
+    };
+
+    // Wheel: one hop per gesture. Pinch-zoom (ctrl+wheel) and the panel's
+    // own scrolling are left to the browser.
+    const wheel = new WheelIntent();
+    const onWheel = (e: WheelEvent) => {
+      if (sim.get().mode !== "rails" || e.ctrlKey) return;
+      const nested = insideScrollable(e.target, e.deltaY);
+      if (nested.inside) {
+        // Scroll the panel; at its edge, swallow rather than chain to the page.
+        if (!nested.canScroll) e.preventDefault();
+        wheel.reset();
+        return;
+      }
+      e.preventDefault();
+      const hop = wheel.push(
+        e.deltaY,
+        e.deltaMode,
+        e.timeStamp,
+        window.innerHeight,
+      );
+      if (hop !== 0) scroller.jumpToStation(hop);
+    };
+
+    // Touch: a vertical swipe is one hop, however far it goes.
+    let touchId: number | null = null;
+    let touchX = 0;
+    let touchY = 0;
+    let swiped = false;
+    let touchNested = false;
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) {
+        touchId = null;
+        return;
+      }
+      const t = e.touches[0];
+      touchId = t.identifier;
+      touchX = t.clientX;
+      touchY = t.clientY;
+      swiped = false;
+      touchNested = insideScrollable(e.target, 1).inside;
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (sim.get().mode !== "rails" || touchId === null || touchNested) return;
+      const t = [...e.changedTouches].find((c) => c.identifier === touchId);
+      if (!t) return;
+      if (e.cancelable) e.preventDefault();
+      if (swiped) return;
+      const dx = t.clientX - touchX;
+      const dy = t.clientY - touchY;
+      if (Math.abs(dy) >= SWIPE_PX && Math.abs(dy) > Math.abs(dx)) {
+        swiped = true;
+        // A finger moving up pulls the page down: the next site.
+        scroller.jumpToStation(dy < 0 ? 1 : -1);
+      }
+    };
+    const onTouchEnd = (e: TouchEvent) => {
+      if ([...e.changedTouches].some((c) => c.identifier === touchId)) {
+        touchId = null;
+      }
     };
     // Click and drag on the world to look around. Only the canvas starts a
     // drag, so the overlays keep their clicks; a finger dragging the page
@@ -175,11 +271,26 @@ export function useInputs(): void {
       }
       if (mode === "rails") {
         // Station hops. The arrows steer and bank in the vehicles, so this
-        // only runs on rails.
-        if (NEXT_KEYS.has(e.code) || PREV_KEYS.has(e.code)) {
-          e.preventDefault();
-          scroller.jumpToStation(NEXT_KEYS.has(e.code) ? 1 : -1);
+        // only runs on rails. A held key hops once, not once per repeat.
+        const hop = keyHop(e.code, e.shiftKey);
+        if (hop === null) return;
+        // Space presses a focused button; the panel's own scroll keeps
+        // its arrows and page keys while it can still move.
+        if (
+          e.code === "Space" &&
+          e.target instanceof Element &&
+          e.target.closest("button, a, summary, [role=button]")
+        ) {
+          return;
         }
+        const nested = insideScrollable(e.target, hop === -1 ? -1 : 1);
+        if (nested.inside && nested.canScroll) return;
+        e.preventDefault();
+        if (e.repeat) return;
+        const last = (frame.layout?.stations.length ?? 1) - 1;
+        if (hop === "first") scroller.jumpTo(0);
+        else if (hop === "last") scroller.jumpTo(last);
+        else scroller.jumpToStation(hop);
       } else if (mode === "driving") {
         if (e.code in THROTTLE_KEYS || e.code in STEER_KEYS) {
           e.preventDefault();
@@ -208,6 +319,11 @@ export function useInputs(): void {
     const detachScroller = attachScroller();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
+    window.addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
+    window.addEventListener("touchend", onTouchEnd, { passive: true });
+    window.addEventListener("touchcancel", onTouchEnd, { passive: true });
     window.addEventListener("pointerdown", onPointerDown);
     window.addEventListener("pointermove", onPointerMove, { passive: true });
     window.addEventListener("pointerup", endDrag);
@@ -221,6 +337,11 @@ export function useInputs(): void {
       detachScroller();
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onTouchEnd);
+      window.removeEventListener("touchcancel", onTouchEnd);
       window.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", endDrag);

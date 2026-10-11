@@ -25,26 +25,65 @@ import {
   IDLE_FLIGHT,
 } from "./flightController.ts";
 import { lookTargetAt } from "./railPath.ts";
-import { scrollMax } from "./scroller.ts";
+import { scroller, scrollMax } from "./scroller.ts";
 import { buildLayout, buildStations, scrollFromRail } from "./stations.ts";
 import { scrollTargetT } from "./useInputs.ts";
 
 /**
- * Rail-following feel. The camera sits on the rail exactly; all smoothing
- * is in t, so it can never cut a chord through a hillside between two
- * points of a bend.
+ * Rail-following feel. The camera rides the rail; all smoothing is in t,
+ * so it can never cut a chord through a hillside between two points of a
+ * bend. A hop's own eased tween is followed exactly, so the camera stops
+ * the moment the hop does; the smoothing below only softens a scroll
+ * that is not a hop (a scrollbar drag).
  */
 const RAILS = {
-  /** How fast the smoothed rail t chases the scroll position, 1/s. */
-  scrollFollow: 4,
+  /** How fast the smoothed rail t chases a non-hop scroll position, 1/s. */
+  scrollFollow: 10,
   /**
-   * Top speed along the rail, m/s. A flick of the wheel asks for hundreds
-   * of metres at once; this turns that into a fast ride rather than a
-   * teleport, and bounds how far the look smoothing can lag.
+   * Top speed along the rail for a non-hop scroll, m/s, so a scrollbar
+   * yank is a fast ride rather than a teleport.
    */
-  maxSpeed: 240,
+  maxSpeed: 600,
+  /** Closer than this to the scroll position, the rail t just lands, m. */
+  land: 0.05,
   /** Aim damping, 1/s. */
   aimFollow: 8,
+} as const;
+
+/**
+ * Station framing: at a site the camera lifts out of the lead car to a
+ * third-person spot behind the train, and the lens widens, so the whole
+ * installation reads with the train in the foreground. The weight runs
+ * from 0, the seat in the lead car, to 1, fully framed.
+ */
+const FRAMING = {
+  /**
+   * Distance back from the seat for the framed eye, as a share of the
+   * distance to the site, m/m, so a site close to the rail on a tight
+   * terrace is not pushed out of reading range; clamped to [backMin, backMax].
+   */
+  backPerMeter: 0.45,
+  backMin: 6,
+  backMax: 12,
+  /**
+   * How much of "back" follows the rail (behind the train) rather than
+   * the line from the site to the seat (behind the train as the camera
+   * sees it), 0..1.
+   */
+  alongRail: 0.3,
+  /** Height above the seat for the framed eye, m. */
+  up: 4.5,
+  /** Fully framed within this many metres of a station... */
+  near: 4,
+  /** ...and not at all beyond this many. */
+  far: 45,
+  /** Weight damping, 1/s. */
+  rate: 2.5,
+  /** Framed vertical FOV by orientation, degrees. */
+  fovLandscape: 64,
+  fovPortrait: 82,
+  /** Smallest FOV change worth a projection update, degrees. */
+  fovEpsilon: 0.05,
 } as const;
 
 const CHASE = {
@@ -194,6 +233,10 @@ export function CameraRig({
     [],
   );
   const smoothT = useRef(0);
+  /** A hop was in flight last frame. */
+  const hopped = useRef(false);
+  /** Station framing weight, 0..1 (see FRAMING). */
+  const framing = useRef(0);
   const currentTarget = useRef<THREE.Vector3 | null>(null);
   const statClock = useRef({ t: 0, frames: 0 });
   const devCamera = useMemo(
@@ -240,18 +283,41 @@ export function CameraRig({
       finishFrame(rawDt);
       return;
     }
-    if (camera instanceof THREE.PerspectiveCamera) {
-      const fov = camera.aspect < 1 ? FOV_PORTRAIT : FOV_LANDSCAPE;
-      if (camera.fov !== fov) {
-        camera.fov = fov;
-        camera.updateProjectionMatrix();
-      }
-    }
     const s = scratch;
     // Reduced motion: every follow becomes an instant cut.
     const damp = snap.reducedMotion
       ? () => 1
       : (rate: number) => 1 - Math.exp(-rate * dt);
+
+    // Station framing rises as the rail t closes on a station and falls
+    // as it leaves; only the rails are ever framed.
+    {
+      let goal = 0;
+      const layout = frame.layout;
+      if (snap.mode === "rails" && layout) {
+        let nearest = Number.POSITIVE_INFINITY;
+        for (const st of layout.stations) {
+          const d = Math.abs(smoothT.current - st.t) * world.rail.length;
+          if (d < nearest) nearest = d;
+        }
+        const u = Math.min(
+          1,
+          Math.max(0, (nearest - FRAMING.near) / (FRAMING.far - FRAMING.near)),
+        );
+        goal = 1 - u * u * (3 - 2 * u);
+      }
+      framing.current += (goal - framing.current) * damp(FRAMING.rate);
+    }
+    if (camera instanceof THREE.PerspectiveCamera) {
+      const portrait = camera.aspect < 1;
+      const base = portrait ? FOV_PORTRAIT : FOV_LANDSCAPE;
+      const wide = portrait ? FRAMING.fovPortrait : FRAMING.fovLandscape;
+      const fov = base + (wide - base) * framing.current;
+      if (Math.abs(camera.fov - fov) > FRAMING.fovEpsilon) {
+        camera.fov = fov;
+        camera.updateProjectionMatrix();
+      }
+    }
 
     // Mode changes: taking off starts the flight from wherever the Flyer
     // hangs, heading the way it was facing.
@@ -342,10 +408,21 @@ export function CameraRig({
 
     if (snap.mode === "rails") {
       const before = smoothT.current;
-      let next = before + (frame.scrollT - before) * damp(RAILS.scrollFollow);
-      // Speed limit, in t per frame. Reduced motion cuts instead.
-      if (!snap.reducedMotion) {
-        const maxStep = (RAILS.maxSpeed / world.rail.length) * dt;
+      const L = world.rail.length;
+      let next = frame.scrollT;
+      // A hop is already eased: ride it exactly, so the camera arrives
+      // with it. Anything else (a scrollbar drag) is smoothed and capped.
+      // The frame after a hop ends still rides it, so a dropped frame at
+      // the end of the tween can never leave a smoothed tail behind.
+      const hopping = scroller.tweening || hopped.current;
+      hopped.current = scroller.tweening;
+      if (
+        !hopping &&
+        !snap.reducedMotion &&
+        Math.abs(next - before) * L > RAILS.land
+      ) {
+        next = before + (next - before) * damp(RAILS.scrollFollow);
+        const maxStep = (RAILS.maxSpeed / L) * dt;
         if (next > before + maxStep) next = before + maxStep;
         else if (next < before - maxStep) next = before - maxStep;
       }
@@ -357,6 +434,30 @@ export function CameraRig({
       s.pos.set(s.v3[0], s.v3[1], s.v3[2]);
       lookTargetAt(world.meta.looks, t, s.v3);
       s.aim.set(s.v3[0], s.v3[1], s.v3[2]);
+      // Framed: blend toward a spot behind the train, as seen from the
+      // site: back along the rail (the train faces +t) and away from the
+      // aim, then up, so the train sits in the foreground of the shot.
+      const w = framing.current;
+      if (w > 0) {
+        world.rail.tangentAt(t, s.v3);
+        s.forward.set(-s.v3[0], 0, -s.v3[2]).normalize();
+        s.dir.set(s.pos.x - s.aim.x, 0, s.pos.z - s.aim.z);
+        const back = Math.min(
+          FRAMING.backMax,
+          Math.max(FRAMING.backMin, s.dir.length() * FRAMING.backPerMeter),
+        );
+        s.dir.normalize();
+        s.forward
+          .multiplyScalar(FRAMING.alongRail)
+          .addScaledVector(s.dir, 1 - FRAMING.alongRail);
+        if (s.forward.lengthSq() < 1e-6) s.forward.copy(s.dir);
+        s.forward.normalize();
+        s.target
+          .copy(s.pos)
+          .addScaledVector(s.forward, back)
+          .setY(s.pos.y + FRAMING.up);
+        s.pos.lerp(s.target, w);
+      }
       probeX = s.aim.x;
       probeZ = s.aim.z;
 

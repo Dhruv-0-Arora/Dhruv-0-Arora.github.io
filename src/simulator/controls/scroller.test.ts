@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { frame, sim } from "../simStore.ts";
 import {
-  JUMP_MS,
+  HOP,
+  hopDuration,
+  keyHop,
   Scroller,
   type ScrollHost,
-  SNAP_IDLE_MS,
 } from "./scroller.ts";
 import { buildLayout, plateauCentre, type Station } from "./stations.ts";
 
@@ -15,7 +16,6 @@ class FakeHost implements ScrollHost {
   y = 0;
   time = 0;
   frames = new Map<number, (now: number) => void>();
-  timers = new Map<number, { at: number; cb: () => void }>();
   private nextId = 1;
   scrolls: number[] = [];
 
@@ -34,31 +34,17 @@ class FakeHost implements ScrollHost {
   cancelFrame = (id: number) => {
     this.frames.delete(id);
   };
-  setTimer = (cb: () => void, ms: number) => {
-    const id = this.nextId++;
-    this.timers.set(id, { at: this.time + ms, cb });
-    return id;
-  };
-  clearTimer = (id: number) => {
-    this.timers.delete(id);
-  };
 
-  /** Advance the clock, firing due timers and one animation frame. */
+  /** Advance the clock and run one animation frame. */
   tick(ms: number): void {
     this.time += ms;
-    for (const [id, timer] of [...this.timers]) {
-      if (timer.at <= this.time) {
-        this.timers.delete(id);
-        timer.cb();
-      }
-    }
     const due = [...this.frames];
     this.frames.clear();
     for (const [, cb] of due) cb(this.time);
   }
 
   /** Run frames until nothing is scheduled or `limit` frames have run. */
-  settle(limit = 200): void {
+  settle(limit = 400): void {
     for (let i = 0; i < limit && this.frames.size > 0; i++) this.tick(16);
   }
 }
@@ -94,15 +80,17 @@ describe("Scroller", () => {
     expect(host.scrolls).toEqual([]);
   });
 
-  it("tweens to the next plateau centre over JUMP_MS with easing", () => {
+  it("tweens to the next plateau centre over the hop duration with easing", () => {
     host.y = centre(1);
     scroller.jumpToStation(1);
     expect(scroller.tweening).toBe(true);
-    host.tick(JUMP_MS / 2);
+    expect(scroller.heading).toBe(2);
+    const ms = hopDuration((stations[2].t - stations[1].t) * 400);
+    host.tick(ms / 2);
     const mid = host.y;
     expect(mid).toBeGreaterThan(centre(1));
     expect(mid).toBeLessThan(centre(2));
-    host.tick(JUMP_MS / 2);
+    host.tick(ms / 2);
     expect(host.y).toBeCloseTo(centre(2), 6);
     host.settle();
     expect(scroller.tweening).toBe(false);
@@ -113,6 +101,26 @@ describe("Scroller", () => {
     }
   });
 
+  it("takes longer for a longer leg, inside the bounds", () => {
+    expect(hopDuration(0)).toBe(HOP.minMs);
+    expect(hopDuration(10_000)).toBe(HOP.maxMs);
+    expect(hopDuration(300)).toBeGreaterThan(hopDuration(100));
+
+    const timeTo = (from: number) => {
+      host = new FakeHost();
+      scroller = new Scroller(host);
+      host.y = centre(from);
+      scroller.jumpToStation(1);
+      const begin = host.time;
+      host.settle();
+      return host.time - begin;
+    };
+    // 0.4 of the rail (stalk to cypher) against 0.1 (cypher to hub).
+    expect(timeTo(2)).toBeGreaterThan(timeTo(3));
+    expect(timeTo(3)).toBeGreaterThanOrEqual(HOP.minMs);
+    expect(timeTo(2)).toBeLessThanOrEqual(HOP.maxMs + 16);
+  });
+
   it("stacks jumps on the destination in flight", () => {
     host.y = centre(1);
     scroller.jumpToStation(1);
@@ -120,6 +128,26 @@ describe("Scroller", () => {
     scroller.jumpToStation(1);
     host.settle();
     expect(host.y).toBeCloseTo(centre(3), 6);
+  });
+
+  it("keeps its speed when a hop is chained onto one in flight", () => {
+    host.y = centre(0);
+    scroller.jumpToStation(1);
+    for (let i = 0; i < 30; i++) host.tick(16);
+    const a = host.scrolls[host.scrolls.length - 2];
+    const b = host.scrolls[host.scrolls.length - 1];
+    const before = b - a;
+    expect(before).toBeGreaterThan(0);
+    scroller.jumpToStation(1);
+    host.tick(16);
+    const after = host.y - b;
+    // No stall: the next frame moves about as far as the last one did.
+    expect(after).toBeGreaterThan(before * 0.6);
+    host.settle();
+    expect(host.y).toBeCloseTo(centre(2), 6);
+    for (let i = 1; i < host.scrolls.length; i++) {
+      expect(host.scrolls[i]).toBeGreaterThanOrEqual(host.scrolls[i - 1]);
+    }
   });
 
   it("goes to the hub at both ends and clamps there", () => {
@@ -148,77 +176,59 @@ describe("Scroller", () => {
     expect(host.scrolls).toEqual([centre(1)]);
   });
 
-  it("is cancelled by input and stays put", () => {
+  it("gives way when something else moves the page, and stays put", () => {
     host.y = centre(0);
     scroller.jumpToStation(1);
     host.tick(200);
+    host.y += 500;
     const where = host.y;
-    scroller.onInput();
+    host.tick(16);
     expect(scroller.tweening).toBe(false);
     host.settle();
     expect(host.y).toBe(where);
   });
 
-  it("snaps to the nearer station after the scroll goes quiet", () => {
-    const span = layout.starts[2] - layout.ends[1];
-    host.y = (layout.ends[1] + span * 0.7) * MAX;
-    scroller.onScroll();
-    host.tick(SNAP_IDLE_MS - 1);
-    expect(scroller.tweening).toBe(false);
-    host.tick(1);
-    expect(scroller.tweening).toBe(true);
-    host.settle();
-    expect(host.y).toBeCloseTo(centre(2), 6);
-  });
-
-  it("restarts the idle clock on every scroll", () => {
-    const span = layout.starts[2] - layout.ends[1];
-    host.y = (layout.ends[1] + span * 0.3) * MAX;
-    scroller.onScroll();
-    host.tick(SNAP_IDLE_MS - 10);
-    scroller.onScroll();
-    host.tick(SNAP_IDLE_MS - 10);
-    expect(scroller.tweening).toBe(false);
-    host.tick(10);
-    expect(scroller.tweening).toBe(true);
-    host.settle();
-    expect(host.y).toBeCloseTo(centre(1), 6);
-  });
-
-  it("never snaps from a plateau, while tweening, under a pointer or in reduced motion", () => {
-    host.y = centre(1);
-    scroller.onScroll();
-    host.tick(SNAP_IDLE_MS);
-    expect(scroller.tweening).toBe(false);
-
-    const span = layout.starts[2] - layout.ends[1];
-    const mid = (layout.ends[1] + span * 0.5) * MAX;
-    host.y = mid;
-    scroller.onPointerDown();
-    scroller.onScroll();
-    host.tick(SNAP_IDLE_MS);
-    expect(scroller.tweening).toBe(false);
-    scroller.onPointerUp();
-
-    sim.set({ reducedMotion: true });
-    scroller.onScroll();
-    host.tick(SNAP_IDLE_MS);
-    expect(scroller.tweening).toBe(false);
-    sim.set({ reducedMotion: false });
-
-    // The tween's own scrolls do not arm the assist.
+  it("stops when the visitor leaves the rails", () => {
     host.y = centre(0);
     scroller.jumpToStation(1);
-    scroller.onScroll();
-    expect(host.timers.size).toBe(0);
+    host.tick(200);
+    const where = host.y;
+    sim.set({ mode: "driving" });
+    host.tick(16);
+    expect(scroller.tweening).toBe(false);
+    expect(host.y).toBe(where);
   });
 
-  it("stays quiet off the rails", () => {
-    sim.set({ mode: "flying" });
-    const span = layout.starts[2] - layout.ends[1];
-    host.y = (layout.ends[1] + span * 0.5) * MAX;
-    scroller.onScroll();
-    host.tick(SNAP_IDLE_MS);
-    expect(scroller.tweening).toBe(false);
+  it("is a no-op when asked for the station already in flight", () => {
+    host.y = centre(0);
+    scroller.jumpTo(2);
+    host.tick(100);
+    const scrolls = host.scrolls.length;
+    scroller.jumpTo(2);
+    expect(host.frames.size).toBe(1);
+    host.tick(16);
+    expect(host.scrolls.length).toBe(scrolls + 1);
+  });
+});
+
+describe("keyHop", () => {
+  it("maps the page keys and the hop keys", () => {
+    for (const code of [
+      "ArrowRight",
+      "ArrowDown",
+      "PageDown",
+      "KeyN",
+      "KeyJ",
+    ]) {
+      expect(keyHop(code)).toBe(1);
+    }
+    for (const code of ["ArrowLeft", "ArrowUp", "PageUp", "KeyP", "KeyK"]) {
+      expect(keyHop(code)).toBe(-1);
+    }
+    expect(keyHop("Space")).toBe(1);
+    expect(keyHop("Space", true)).toBe(-1);
+    expect(keyHop("Home")).toBe("first");
+    expect(keyHop("End")).toBe("last");
+    expect(keyHop("KeyW")).toBeNull();
   });
 });

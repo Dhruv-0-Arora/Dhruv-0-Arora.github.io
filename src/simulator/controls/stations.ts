@@ -25,6 +25,8 @@ export interface ScrollLayout {
   starts: readonly number[];
   /** Scroll s where each station's plateau ends. */
   ends: readonly number[];
+  /** Length of the rail the stations sit on, m. */
+  railLength: number;
 }
 
 /**
@@ -123,6 +125,7 @@ export function buildLayout(
     stations,
     starts: starts.map((v) => v / total),
     ends: ends.map((v) => v / total),
+    railLength,
   };
 }
 
@@ -212,13 +215,6 @@ export function jumpTarget(
         ? place.from + 1
         : place.from;
   return clamp(raw, 0, layout.stations.length - 1);
-}
-
-/** The nearer station when stopped mid-transit; null while on a plateau. */
-export function snapTarget(s: number, layout: ScrollLayout): number | null {
-  const place = locateScroll(s, layout);
-  if (place.kind === "plateau") return null;
-  return place.u < 0.5 ? place.from : place.from + 1;
 }
 
 /** Project zones in riding order, the hub left out. */

@@ -5,6 +5,7 @@ import { useIdleMount } from "../lib/useIdleMount";
 import { RAIL_SCREENS, useInputs } from "./controls/useInputs.ts";
 import { StaticPortfolio } from "./fallback/StaticPortfolio.tsx";
 import { useSimulatorCapability } from "./fallback/useSimulatorCapability.ts";
+import { HopBar } from "./overlay/HopBar.tsx";
 import { HUD } from "./overlay/HUD.tsx";
 import { ProjectPanel } from "./overlay/ProjectDock.tsx";
 import { sim } from "./simStore.ts";
@@ -58,6 +59,7 @@ function SimulatorShell({ reducedMotion }: { reducedMotion: boolean }) {
         data-rail-spacer
       />
       <HUD />
+      <HopBar />
       <ProjectPanel />
       <HiddenProjectList />
     </>

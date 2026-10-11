@@ -14,7 +14,6 @@ import {
   type ScrollLayout,
   type Station,
   scrollFromRail,
-  snapTarget,
 } from "./stations.ts";
 
 /**
@@ -217,7 +216,7 @@ describe("railFromScroll / scrollFromRail", () => {
   });
 });
 
-describe("jumpTarget / snapTarget", () => {
+describe("jumpTarget", () => {
   const layout = layoutOf(stations);
 
   it("steps to the neighbouring station from a plateau", () => {
@@ -240,13 +239,6 @@ describe("jumpTarget / snapTarget", () => {
       0,
     );
     expect(stations[jumpTarget(plateauCentre(layout, 3), layout, 1)].t).toBe(1);
-  });
-
-  it("snaps to the nearer station only when off a plateau", () => {
-    expect(snapTarget(plateauCentre(layout, 2), layout)).toBeNull();
-    const span = layout.starts[3] - layout.ends[2];
-    expect(snapTarget(layout.ends[2] + span * 0.2, layout)).toBe(2);
-    expect(snapTarget(layout.ends[2] + span * 0.8, layout)).toBe(3);
   });
 });
 

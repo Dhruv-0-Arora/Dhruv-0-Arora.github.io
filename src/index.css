@@ -128,15 +128,11 @@
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
 }
 
-html {
-  scroll-behavior: smooth;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-}
+/*
+ * No `scroll-behavior: smooth` on html: the simulator's page scroll is
+ * the rail position, and its hops run their own eased tween. Browser
+ * smoothing on top would stretch every programmatic scroll.
+ */
 
 body {
   @apply bg-bg font-sans text-text antialiased;
@@ -378,4 +374,197 @@ body {
   font-family: var(--font-mono);
   font-size: 13px;
   backdrop-filter: blur(14px);
+}
+
+/*
+ * The hop bar: prev and next along the lap in bare type over the world,
+ * no frame. A halo in the terminal background keeps it legible over a
+ * bright sky and dark rock alike. Beside the open panel it centres over
+ * the world that is left, on the line of the panel's title bar.
+ */
+.hop {
+  position: fixed;
+  top: 0.25rem;
+  right: 0;
+  left: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 3ch;
+  padding-inline: 0.5rem;
+  pointer-events: none;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1;
+  color: var(--t-muted);
+}
+
+/*
+ * Bare type over the world: a halo in the terminal background, tight and
+ * then wide, so a line reads over a bright sky and dark rock alike.
+ */
+.sim-halo {
+  text-shadow:
+    0 0 1px var(--t-bg0),
+    0 0 3px var(--t-bg0),
+    0 0 8px var(--t-bg0),
+    0 0 18px color-mix(in srgb, var(--t-bg0) 70%, transparent);
+}
+
+.hop-motion {
+  transition:
+    opacity 200ms ease-out,
+    visibility 200ms,
+    left 200ms ease-out;
+}
+
+.hop-hidden {
+  visibility: hidden;
+  opacity: 0;
+}
+
+.hop-btn {
+  display: flex;
+  min-width: 0;
+  min-height: 44px;
+  align-items: center;
+  gap: 1.2ch;
+  padding-inline: 0.75ch;
+  pointer-events: auto;
+  white-space: nowrap;
+  transition: color 120ms ease;
+}
+
+.hop-prev {
+  justify-self: end;
+}
+
+.hop-next {
+  justify-self: start;
+}
+
+.hop-btn:hover {
+  color: var(--t-fg);
+}
+
+.hop-glyph {
+  flex: none;
+  font-size: 1.5em;
+  line-height: 0;
+  color: var(--t-fg);
+  transform: translate(0, -0.06em);
+  transition: transform 120ms ease;
+}
+
+.hop-prev:hover .hop-glyph {
+  transform: translate(-2px, -0.06em);
+}
+
+.hop-next:hover .hop-glyph {
+  transform: translate(2px, -0.06em);
+}
+
+.hop-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hop-active,
+.hop-active .hop-glyph {
+  color: var(--t-green);
+}
+
+.hop-count {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.hop-of {
+  padding-inline: 0.6ch;
+  color: var(--t-dim);
+}
+
+@media (max-width: 399px) {
+  .hop-name {
+    display: none;
+  }
+
+  .hop-of {
+    padding-inline: 0.15ch;
+  }
+}
+
+@media (min-width: 768px) {
+  .hop {
+    top: 0.9375rem;
+    padding-inline: 1rem;
+    font-size: 13px;
+  }
+
+  .hop-beside {
+    left: calc(1.25rem + min(44vw, 41rem));
+  }
+}
+
+/*
+ * The first-visit note: a terminal window small enough to sit above the
+ * hint line, one prompt and its output, the actionable lines selectable
+ * the way a picker highlights them.
+ */
+.term-note {
+  border: 1px solid var(--t-green);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--t-bg0) 94%, transparent);
+  padding: 0.45rem 0.45rem 0.55rem 0.5rem;
+  text-align: left;
+  text-shadow: none;
+  color: var(--t-fg);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.7;
+  box-shadow: 0 16px 40px -20px rgb(0 0 0 / 0.45);
+  backdrop-filter: blur(14px);
+}
+
+.term-note-motion {
+  transition:
+    opacity 200ms ease-out,
+    transform 200ms ease-out;
+}
+
+.term-note-enter {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.term-note-cmd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3ch;
+  padding-left: 0.4rem;
+}
+
+.term-note-lines {
+  margin-top: 0.15rem;
+}
+
+.term-note-row {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 4ch 1fr;
+  column-gap: 1ch;
+  border-radius: 4px;
+  padding-inline: 0.4rem;
+  text-align: left;
+}
+
+.term-note-action {
+  transition: background-color 120ms ease;
+}
+
+.term-note-action:hover {
+  background: var(--t-bg2);
 }
