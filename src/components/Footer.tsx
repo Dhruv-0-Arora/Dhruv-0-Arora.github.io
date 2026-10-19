@@ -40,6 +40,12 @@ export function Footer() {
                 {label.toLowerCase()}
               </a>
             ))}
+            <a
+              href={profile.galleryHref}
+              className="font-mono text-[13px] text-faint transition-colors hover:text-accent"
+            >
+              photos
+            </a>
           </div>
           <p className="mt-12 font-mono text-xs text-faint">
             built with react + three.js, deployed on vercel

@@ -60,7 +60,9 @@ The current world is about 1.6 MB and 231k authored triangles (200k of them the 
 
 ## Media
 
-Photos for the hub carousel come from originals in `assets/gallery/` (untracked): `bun run media:build` cover-fits them to 3:2 at 1280 px into `public/gallery/` and prints the entries to paste into `src/content/gallery.ts`.
+Photos for the hub carousel and the `/gallery/` page come from originals in `assets/gallery/` (untracked).
+`bun run media:build` clears `public/photos/`, cover-fits each original to 3:2 at 1280 px for the carousel (and link previews), writes WebP renditions at 960, 1600 and 2400 px on the long edge for the gallery, strips metadata, and prints the entries to paste into `src/content/gallery.ts`.
+The array order there is the gallery's order, and `hub: true` puts a photo on one of the carousel's six frames.
 Clips for the zone screens are transcoded with `scripts/transcode-media.sh <clip> <zone>` (ffmpeg via `nix shell nixpkgs#ffmpeg`) into `public/media/<zone>.webm` and `.mp4`, then referenced by `src` in `src/simulator/world/zoneScreens.ts`.
 The lint forbids textures in the world itself; every picture is applied at runtime.
 

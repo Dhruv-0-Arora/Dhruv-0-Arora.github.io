@@ -7,6 +7,7 @@ export const profile = {
   location: "Seattle / Madison",
   email: "a_dhruv@outlook.com",
   resumeHref: "/resume/Arora_Dhruv_Resume.pdf",
+  galleryHref: "/gallery/",
   github: "https://github.com/Dhruv-0-Arora",
   about: [
     "I'm a computer science and math student at UW-Madison, currently a software engineering intern at Autodesk, where I help build Synthesis - an open source robotics simulator used by 5,000+ FIRST robotics students. Before that meant anything on a resume, it meant I got to demo my own work to Autodesk's executive team as one of two high school interns.",

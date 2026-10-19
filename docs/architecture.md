@@ -16,7 +16,8 @@ assets/gallery/            (untracked) photo originals for scripts/build-media.t
   scripts/make_fixture.py  minimal valid scene for the pipeline test
 scripts/                   build-world.ts, optimize-glb.ts, world-budgets.ts, build-media.ts (Node, not bun)
 public/world/              committed build output: one glb per district + meta.json
-public/gallery/, media/    carousel photos and zone screen clips, built from originals
+public/photos/, media/     carousel and gallery photos, zone screen clips, built from originals
+gallery/index.html         second Vite entry: the /gallery/ photo page (src/gallery/, no three.js)
 public/models/dozer.mira   the vehicle, parsed live in the browser
 src/simulator/             the simulator (see below)
 src/components/            the static page sections, reused as the fallback
@@ -80,7 +81,7 @@ The respawn uses the same query at the nearest rail point.
 `src/simulator/world/instancing/` holds one component per repetitive or animated field, anchored on a zone, a route or a loaded district from `meta.json`.
 Bamboo grove on `dirnt`, hex map on `cypher` (sized to the zone's diameter and cut round to its terrace), camera frusta on `altigoz`, candlesticks on `kerms` and `imc-prosperity-4`.
 On the backdrop: `Climbers` (rope teams walking `meta.routes`, pure path math in `climbPath.ts`) and `Conifers` (up to 12,000 trees scattered over the loaded range in proportion to the terrain field's forest weight, thinned evenly past the cap, kept off every terrace, the rail, the trails, the lakes and the hub clearing by `treeClearance.ts`).
-At the hub: `PhotoCarousel` (six frames fed by `src/content/gallery.ts`) and, hanging over the pad, the Flyer (`flyer/FlyerRig.tsx`, a life-size 1903 biplane: generated cambered muslin surfaces with a rib texture, spruce struts and wires, the engine and its chain drives, twisted pusher propellers and the prone pilot, props idling until it is flown).
+At the hub: `PhotoCarousel` (six frames fed by the `hub` entries of `src/content/gallery.ts`) and, hanging over the pad, the Flyer (`flyer/FlyerRig.tsx`, a life-size 1903 biplane: generated cambered muslin surfaces with a rib texture, spruce struts and wires, the engine and its chain drives, twisted pusher propellers and the prone pilot, props idling until it is flown).
 
 The rail itself is visible: `rail/RailTrack.tsx` builds two rail tubes, instanced ties and a beam from the exported rail curve, and `rail/Train.tsx` parks three open cars at `frame.railT`, the smoothed parameter the camera follows, so the visitor rides the lead car and the train waits on the track while a vehicle is out. Every visual constant is in `rail/railStyle.ts`; the shape is the Blender rail.
 `ZoneScreen` hangs a 16:9 panel at the zones listed in `world/zoneScreens.ts`; `mediaSurface.ts` paints its placeholder and swaps in a photo or a looping video.
@@ -115,6 +116,6 @@ It collapses to an edge tab; `overlay/panelState.ts` keeps that choice in `local
 ```sh
 bun run dev | build | lint | test | format
 bun run world:build       # Blender -> lint -> export -> optimize -> public/world/
-bun run media:build       # assets/gallery/ originals -> public/gallery/ (sharp)
+bun run media:build       # assets/gallery/ originals -> public/photos/ (sharp)
 scripts/transcode-media.sh clip.gif orion   # ffmpeg -> public/media/orion.{webm,mp4}
 ```

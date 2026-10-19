@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Photos - Dhruv Arora</title>
+    <meta name="description" content="Photos by Dhruv Arora: Chicago, mostly, and one dog." />
+    <meta property="og:title" content="Photos - Dhruv Arora" />
+    <meta property="og:description" content="Chicago, mostly, and one dog." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://darora1.me/gallery/" />
+    <meta property="og:image" content="https://darora1.me/photos/chicago-river-night.jpg" />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="853" />
+    <link rel="canonical" href="https://darora1.me/gallery/" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      (() => {
+        // Mirrors themeForHour in src/lib/theme.ts: night before 07:00 and from 19:00.
+        const t = new URLSearchParams(location.search).get("theme");
+        const h = new Date().getHours();
+        const dark = t === "dark" || (t !== "light" && (h < 7 || h >= 19));
+        document.documentElement.classList.toggle("dark", dark);
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/gallery/main.tsx"></script>
+  </body>
+</html>

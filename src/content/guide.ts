@@ -10,6 +10,8 @@ export interface Guide {
   intro: string;
   steps: GuideStep[];
   outro: string;
+  /** Where the rest of the photos live, as a label and a same-site path. */
+  photos: { label: string; href: string };
 }
 
 export const guide: Guide = {
@@ -45,7 +47,8 @@ export const guide: Guide = {
     },
   ],
   outro:
-    "Each site opens this panel with the project you are next to. The photos above the pad are from the Cascades, and the range borrows its peaks: astute sits on the summit of Adams, Synthesis on the shoulder of Rainier. Mount Adams is climbed; Rainier is next. The range runs in daylight or at night to match the hour on your clock.",
+    "Each site opens this panel with the project you are next to. The photos circling above the pad are mine, from Chicago, and the range borrows its peaks: astute sits on the summit of Adams, Synthesis on the shoulder of Rainier. Mount Adams is climbed; Rainier is next. The range runs in daylight or at night to match the hour on your clock.",
+  photos: { label: "photos", href: "/gallery/" },
 };
 
 /** One line of the first-visit note: a key and what it does. */

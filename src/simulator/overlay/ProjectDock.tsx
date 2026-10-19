@@ -81,6 +81,12 @@ function GuideBody({ hasKeyboard }: { hasKeyboard: boolean }) {
         ))}
       </dl>
       <p className="term-p term-muted">{guide.outro}</p>
+      <dl className="term-links">
+        <dt>{guide.photos.label}</dt>
+        <dd>
+          <a href={guide.photos.href}>{guide.photos.href}</a>
+        </dd>
+      </dl>
     </>
   );
 }

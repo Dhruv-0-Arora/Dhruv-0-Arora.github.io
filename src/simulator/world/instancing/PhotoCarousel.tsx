@@ -2,7 +2,7 @@ import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { gallery } from "../../../content/gallery";
+import { gallery, hubSrc } from "../../../content/gallery";
 import { useSim } from "../../simStore.ts";
 import { MediaSurface } from "./mediaSurface.ts";
 import { accentStrip, frameBars } from "./ZoneScreen.tsx";
@@ -15,6 +15,7 @@ const PHOTO_W = 4.5;
 const PHOTO_H = 3.0;
 /** Radians per second; one lap in about two and a half minutes. */
 const SPIN = 0.04;
+const PHOTOS = gallery.filter((p) => p.hub).slice(0, FRAMES);
 
 function frameMatrix(i: number): THREE.Matrix4 {
   const a = (i / FRAMES) * Math.PI * 2;
@@ -84,7 +85,8 @@ export function PhotoCarousel({ onMount }: PhotoCarouselProps) {
 
   useEffect(() => {
     parts.surfaces.forEach((s, i) => {
-      s.setSource(gallery[i]?.src);
+      const photo = PHOTOS[i];
+      s.setSource(photo ? hubSrc(photo) : undefined);
     });
   }, [parts]);
 
