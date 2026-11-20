@@ -26,9 +26,13 @@ jobs:
         with:
           bun-version: 1.3.13
       - run: bun install --frozen-lockfile
+        working-directory: sim
       - run: bun run lint
+        working-directory: sim
       - run: bun run test
+        working-directory: sim
       - run: bun run build
+        working-directory: sim
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
