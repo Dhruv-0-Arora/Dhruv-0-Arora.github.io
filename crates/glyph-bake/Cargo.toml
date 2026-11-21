@@ -1,0 +1,18 @@
+[package]
+name = "glyph-bake"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+flate2 = { version = "1.1", default-features = false, features = ["rust_backend"] }
+fontdue = { version = "0.9", default-features = false, features = ["std"] }
+glyph = { path = "../glyph" }
+prost = { version = "0.14", default-features = false, features = ["std", "derive"] }
+
+[dev-dependencies]
+insta = "1.49"
+wasmi = "2.0"
+
+[lints]
+workspace = true

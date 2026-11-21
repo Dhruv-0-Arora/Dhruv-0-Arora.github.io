@@ -8,4 +8,6 @@ logs/
 *.local
 __pycache__/
 
+target/
 .direnv/
+*.snap.new

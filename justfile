@@ -1,6 +1,23 @@
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
-default: ci
+wasm_out := "target/glyph.wasm"
+
+default: check
+
+fmt:
+    cargo fmt --all
+
+lint:
+    cargo fmt --all --check
+    cargo clippy --workspace --all-targets -- -D warnings
+    cargo clippy -p glyph --target wasm32-unknown-unknown -- -D warnings
+
+wasm:
+    cargo build -p glyph --target wasm32-unknown-unknown --release
+    wasm-opt -Oz --enable-bulk-memory --enable-nontrapping-float-to-int --enable-sign-ext --enable-mutable-globals --strip-debug --strip-producers target/wasm32-unknown-unknown/release/glyph.wasm -o {{ wasm_out }}
+
+test: wasm
+    cargo test --workspace
 
 sim:
     cd sim && bun install --frozen-lockfile && bun run build
@@ -8,7 +25,9 @@ sim:
 sim-check:
     cd sim && bun install --frozen-lockfile && bun run lint && bun run test
 
-ci: sim-check sim
+check: lint test
+
+ci: check sim-check sim
 
 fonts:
     #!/usr/bin/env bash
