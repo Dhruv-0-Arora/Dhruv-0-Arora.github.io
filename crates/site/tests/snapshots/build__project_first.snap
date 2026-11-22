@@ -1,0 +1,88 @@
+---
+source: crates/site/tests/build.rs
+expression: fixture.read(rel)
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alpha - Test Site</title>
+<meta name="description" content="Alpha is the first fixture project and it is featured.">
+<link rel="canonical" href="https://example.test/projects/alpha/">
+<meta name="color-scheme" content="light dark">
+<meta property="og:title" content="Alpha - Test Site">
+<meta property="og:description" content="Alpha is the first fixture project and it is featured.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://example.test/projects/alpha/">
+<meta property="og:image" content="https://example.test/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/commit-mono-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/style.css?v=e0accce0">
+<link rel="next" href="/projects/gamma/">
+<script>try{var d=document.documentElement,t=new URLSearchParams(location.search).get("theme");if(t!="light"&&t!="dark")t=localStorage.getItem("theme");if(t=="light"||t=="dark")d.dataset.theme=t}catch(e){}</script>
+<script src="/theme.js?v=d0077b12" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="frame">
+<nav class="tree" aria-label="Site">
+<ul>
+<li class="root"><a href="/">test site</a>
+<ul>
+<li class="open"><a href="/projects/">work</a>
+<ul>
+<li class="g open"><a href="/projects/#fast">fast</a>
+<ul>
+<li class="here"><a href="/projects/alpha/" aria-current="page">alpha</a></li>
+<li><a href="/projects/gamma/">gamma</a></li>
+</ul>
+</li>
+<li class="g"><a href="/projects/#slow">slow</a></li>
+</ul>
+</li>
+<li><a href="/notes/">notes</a></li>
+<li><a href="/gallery/">pictures</a></li>
+</ul>
+</li>
+</ul>
+<ul class="out">
+<li><a href="/dot.png">resume</a></li>
+<li><a href="/sim/">simulator</a></li>
+</ul>
+<button class="theme" type="button" hidden>theme: auto</button>
+</nav>
+<main id="main">
+<article>
+<header>
+<h1>Alpha</h1>
+<p class="lede">First one, written in <span class="t">Rust</span> &amp; <span class="t">C++</span>.</p>
+<dl class="meta">
+<dt>tech</dt><dd><span class="t">Rust</span>, <span class="t">C++</span></dd>
+<dt>role</dt><dd>solo</dd>
+<dt>when</dt><dd><span class="n">2024-06</span></dd>
+<dt>links</dt><dd><a href="https://example.test/alpha">repo</a><a href="/notes/#table">notes</a></dd>
+</dl>
+</header>
+<div class="prose">
+<p>Alpha runs on <span class="t">Kubernetes</span>, not Go, at <span class="n">2,000+</span> requests.</p>
+<h2 id="details"><a href="#details">Details</a></h2>
+<p>Some <code>inline code</code> and a <a href="/projects/beta/">link with 5K</a>.</p>
+<h3 id="deeper"><a href="#deeper">Deeper</a></h3>
+<ol>
+<li>one</li>
+<li>two</li>
+</ol>
+</div>
+<nav class="pager" aria-label="Work">
+<a rel="next" href="/projects/gamma/">gamma</a>
+</nav>
+</article>
+<footer>
+<p>Made with <em>care</em>. <a href="https://example.test/src">Source</a>.</p>
+</footer>
+</main>
+</div>
+</body>
+</html>

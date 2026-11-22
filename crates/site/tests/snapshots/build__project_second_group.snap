@@ -1,0 +1,79 @@
+---
+source: crates/site/tests/build.rs
+expression: fixture.read(rel)
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Delta - Test Site</title>
+<meta name="description" content="Delta sorts first in the slow group despite its title.">
+<link rel="canonical" href="https://example.test/projects/delta/">
+<meta name="color-scheme" content="light dark">
+<meta property="og:title" content="Delta - Test Site">
+<meta property="og:description" content="Delta sorts first in the slow group despite its title.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://example.test/projects/delta/">
+<meta property="og:image" content="https://example.test/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/commit-mono-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/style.css?v=e0accce0">
+<link rel="prev" href="/projects/gamma/">
+<link rel="next" href="/projects/beta/">
+<script>try{var d=document.documentElement,t=new URLSearchParams(location.search).get("theme");if(t!="light"&&t!="dark")t=localStorage.getItem("theme");if(t=="light"||t=="dark")d.dataset.theme=t}catch(e){}</script>
+<script src="/theme.js?v=d0077b12" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="frame">
+<nav class="tree" aria-label="Site">
+<ul>
+<li class="root"><a href="/">test site</a>
+<ul>
+<li class="open"><a href="/projects/">work</a>
+<ul>
+<li class="g"><a href="/projects/#fast">fast</a></li>
+<li class="g open"><a href="/projects/#slow">slow</a>
+<ul>
+<li class="here"><a href="/projects/delta/" aria-current="page">delta</a></li>
+<li><a href="/projects/beta/">beta</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="/notes/">notes</a></li>
+<li><a href="/gallery/">pictures</a></li>
+</ul>
+</li>
+</ul>
+<ul class="out">
+<li><a href="/dot.png">resume</a></li>
+<li><a href="/sim/">simulator</a></li>
+</ul>
+<button class="theme" type="button" hidden>theme: auto</button>
+</nav>
+<main id="main">
+<article>
+<header>
+<h1>Delta</h1>
+<p class="lede">Fourth one.</p>
+<dl class="meta">
+<dt>tech</dt><dd><span class="t">Go</span></dd>
+<dt>role</dt><dd>solo</dd>
+<dt>when</dt><dd><span class="n">2023</span></dd>
+</dl>
+</header>
+<nav class="pager" aria-label="Work">
+<a rel="prev" href="/projects/gamma/">gamma</a>
+<a rel="next" href="/projects/beta/">beta</a>
+</nav>
+</article>
+<footer>
+<p>Made with <em>care</em>. <a href="https://example.test/src">Source</a>.</p>
+</footer>
+</main>
+</div>
+</body>
+</html>

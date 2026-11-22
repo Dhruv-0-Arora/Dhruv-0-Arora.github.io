@@ -1,0 +1,69 @@
+---
+source: crates/site/tests/build.rs
+expression: fixture.read(rel)
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pictures - Test Site</title>
+<meta name="description" content="Two fixture photos, so the gallery markup and lightbox are covered.">
+<link rel="canonical" href="https://example.test/gallery/">
+<meta name="color-scheme" content="light dark">
+<meta property="og:title" content="Pictures - Test Site">
+<meta property="og:description" content="Two fixture photos, so the gallery markup and lightbox are covered.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://example.test/gallery/">
+<meta property="og:image" content="https://example.test/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/commit-mono-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/style.css?v=e0accce0">
+<script>try{var d=document.documentElement,t=new URLSearchParams(location.search).get("theme");if(t!="light"&&t!="dark")t=localStorage.getItem("theme");if(t=="light"||t=="dark")d.dataset.theme=t}catch(e){}</script>
+<script src="/theme.js?v=d0077b12" defer></script>
+<script src="/gallery.js?v=abc2e8e7" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="frame">
+<nav class="tree" aria-label="Site">
+<ul>
+<li class="root"><a href="/">test site</a>
+<ul>
+<li><a href="/projects/">work</a></li>
+<li><a href="/notes/">notes</a></li>
+<li class="here"><a href="/gallery/" aria-current="page">pictures</a></li>
+</ul>
+</li>
+</ul>
+<ul class="out">
+<li><a href="/dot.png">resume</a></li>
+<li><a href="/sim/">simulator</a></li>
+</ul>
+<button class="theme" type="button" hidden>theme: auto</button>
+</nav>
+<main id="main">
+<article>
+<header>
+<h1>Pictures</h1>
+<p class="lede">Shot on <span class="n">2</span> cameras.</p>
+</header>
+<div class="prose">
+<h2 id="notes"><a href="#notes">Notes</a></h2>
+<p>Open a <a href="#cat">photo</a> or go back to <a href="#t-pond">the pond</a>.</p>
+</div>
+<ul class="photos" id="photos">
+<li id="t-pond"><a href="#pond"><img src="/photos/full/pond-40.webp" srcset="/photos/full/pond-40.webp 40w, /photos/full/pond-80.webp 80w, /photos/full/pond-120.webp 120w" sizes="(max-width: 36rem) 100vw, 24rem" alt="A pond at dusk" width="120" height="90" loading="lazy"></a><span class="c">Park, <span class="n">2024</span></span></li>
+<li id="t-cat"><a href="#cat"><img src="/photos/full/cat-30.webp" srcset="/photos/full/cat-30.webp 30w" sizes="(max-width: 36rem) 100vw, 24rem" alt="A cat on a chair" width="30" height="40" loading="lazy"></a><span class="c">Home</span></li>
+</ul>
+<figure class="shot" id="pond"><img src="/photos/full/pond-40.webp" srcset="/photos/full/pond-40.webp 40w, /photos/full/pond-80.webp 80w, /photos/full/pond-120.webp 120w" sizes="100vw" alt="A pond at dusk" width="120" height="90" loading="lazy"><figcaption><span class="c">Park, <span class="n">2024</span></span><a rel="prev" href="#cat">prev</a><a rel="next" href="#cat">next</a><a class="x" href="#t-pond">close</a></figcaption></figure>
+<figure class="shot" id="cat"><img src="/photos/full/cat-30.webp" srcset="/photos/full/cat-30.webp 30w" sizes="100vw" alt="A cat on a chair" width="30" height="40" loading="lazy"><figcaption><span class="c">Home</span><a rel="prev" href="#pond">prev</a><a rel="next" href="#pond">next</a><a class="x" href="#t-cat">close</a></figcaption></figure>
+</article>
+<footer>
+<p>Made with <em>care</em>. <a href="https://example.test/src">Source</a>.</p>
+</footer>
+</main>
+</div>
+</body>
+</html>

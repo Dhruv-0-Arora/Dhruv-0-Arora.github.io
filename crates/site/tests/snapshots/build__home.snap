@@ -1,0 +1,72 @@
+---
+source: crates/site/tests/build.rs
+expression: fixture.read(rel)
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test Site</title>
+<meta name="description" content="A small fixture site that exercises every page kind.">
+<link rel="canonical" href="https://example.test/">
+<meta name="color-scheme" content="light dark">
+<meta property="og:title" content="Test Site">
+<meta property="og:description" content="A small fixture site that exercises every page kind.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://example.test/">
+<meta property="og:image" content="https://example.test/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/commit-mono-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/style.css?v=e0accce0">
+<script>try{var d=document.documentElement,t=new URLSearchParams(location.search).get("theme");if(t!="light"&&t!="dark")t=localStorage.getItem("theme");if(t=="light"||t=="dark")d.dataset.theme=t}catch(e){}</script>
+<script src="/theme.js?v=d0077b12" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="frame">
+<nav class="tree" aria-label="Site">
+<ul>
+<li class="root here"><a href="/" aria-current="page">test site</a>
+<ul>
+<li><a href="/projects/">work</a></li>
+<li><a href="/notes/">notes</a></li>
+<li><a href="/gallery/">pictures</a></li>
+</ul>
+</li>
+</ul>
+<ul class="out">
+<li><a href="/dot.png">resume</a></li>
+<li><a href="/sim/">simulator</a></li>
+</ul>
+<button class="theme" type="button" hidden>theme: auto</button>
+</nav>
+<main id="main">
+<article>
+<header>
+<h1>Test Site</h1>
+<p class="lede">Fixture home with <span class="n">3</span> projects in <span class="t">Rust</span>.</p>
+</header>
+<div class="prose">
+<p>Prose on the home page links to <a href="/projects/alpha/">alpha</a> and <a href="/projects/alpha/#details">its notes</a>.</p>
+</div>
+<h2 id="selected"><a href="#selected">Picked</a></h2>
+<ul class="index">
+<li><a href="/projects/gamma/">gamma</a><span>Third one.</span></li>
+<li><a href="/projects/alpha/">alpha</a><span>First one, written in <span class="t">Rust</span> &amp; <span class="t">C++</span>.</span><span class="c"><span class="n">~40</span> users</span></li>
+<li><a href="/projects/delta/">delta</a><span>Fourth one.</span></li>
+</ul>
+<p><a href="/projects/">Every project</a></p>
+<h2 id="elsewhere"><a href="#elsewhere">Around</a></h2>
+<ul class="index">
+<li><a href="https://example.test/code">code</a><span>example since <span class="n">2019</span></span></li>
+</ul>
+</article>
+<footer>
+<p>Made with <em>care</em>. <a href="https://example.test/src">Source</a>.</p>
+</footer>
+</main>
+</div>
+</body>
+</html>

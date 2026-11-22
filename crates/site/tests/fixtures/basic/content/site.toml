@@ -1,0 +1,18 @@
+title = "Test Site"
+url = "https://example.test"
+footer = "Made with *care*. [Source](https://example.test/src)."
+vocabulary = ["Kubernetes"]
+vocabulary_skip = ["Go"]
+
+[[links]]
+title = "resume"
+href = "/dot.png"
+
+[[links]]
+title = "simulator"
+href = "/sim/"
+
+[[elsewhere]]
+label = "code"
+href = "https://example.test/code"
+text = "example since 2019"

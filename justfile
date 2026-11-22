@@ -19,13 +19,21 @@ wasm:
 test: wasm
     cargo test --workspace
 
+site: wasm
+    cargo run -p site --release -- build
+
+html:
+    find dist -name '*.html' -not -path 'dist/sim/*' -print0 | xargs -0 vnu
+
 sim:
     cd sim && bun install --frozen-lockfile && bun run build
 
 sim-check:
     cd sim && bun install --frozen-lockfile && bun run lint && bun run test
 
-check: lint test
+build: site sim
+
+check: lint test site html
 
 ci: check sim-check sim
 

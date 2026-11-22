@@ -1,0 +1,24 @@
+---
+source: crates/site/tests/build.rs
+expression: fixture.read(rel)
+---
+# Test Site
+
+> A small fixture site that exercises every page kind.
+
+## Pages
+
+- [Test Site](https://example.test/): A small fixture site that exercises every page kind.
+- [Work](https://example.test/projects/): Every fixture project, grouped by what it is about.
+- [Alpha](https://example.test/projects/alpha/): Alpha is the first fixture project and it is featured.
+- [Gamma](https://example.test/projects/gamma/): Gamma has no order, so it sorts after the ordered ones.
+- [Delta](https://example.test/projects/delta/): Delta sorts first in the slow group despite its title.
+- [Beta](https://example.test/projects/beta/): Beta ends the slow group, so its pager only goes back.
+- [Notes](https://example.test/notes/): A plain page with a table, an image, a quote and code.
+- [Pictures](https://example.test/gallery/): Two fixture photos, so the gallery markup and lightbox are covered.
+
+## Links
+
+- [resume](https://example.test/dot.png)
+- [simulator](https://example.test/sim/)
+- [code](https://example.test/code)

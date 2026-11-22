@@ -1,0 +1,15 @@
+---
+source: crates/site/tests/build.rs
+expression: fixture.read(rel)
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<url><loc>https://example.test/</loc></url>
+<url><loc>https://example.test/projects/</loc></url>
+<url><loc>https://example.test/projects/alpha/</loc></url>
+<url><loc>https://example.test/projects/gamma/</loc></url>
+<url><loc>https://example.test/projects/delta/</loc></url>
+<url><loc>https://example.test/projects/beta/</loc></url>
+<url><loc>https://example.test/notes/</loc></url>
+<url><loc>https://example.test/gallery/</loc></url>
+</urlset>
