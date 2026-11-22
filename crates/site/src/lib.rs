@@ -1,4 +1,5 @@
 mod build;
+mod check;
 mod content;
 mod files;
 mod hash;

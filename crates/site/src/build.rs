@@ -1,7 +1,8 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::check::{self, HtmlFile, Output};
 use crate::content::{self, Content};
 use crate::files::{display, slash_path, walk};
 use crate::hash::fnv1a;
@@ -13,6 +14,7 @@ use crate::render::{
     Assets, Corner, GLYPH_ASSET, GLYPH_WASM, Rendition, View, llms, page_scripts, sitemap,
 };
 
+const TEXT_EXTENSIONS: [&str; 6] = ["txt", "xml", "svg", "css", "js", "html"];
 const KEEP: &str = "sim";
 
 #[derive(Debug, Clone)]
@@ -55,6 +57,11 @@ pub fn build(options: &Options) -> Result<Summary, Vec<Problem>> {
     })
 }
 
+fn out_display(options: &Options) -> String {
+    let shown = display(&options.root, &options.out);
+    if shown.is_empty() { ".".into() } else { shown }
+}
+
 fn generate(options: &Options) -> Result<Generated, Vec<Problem>> {
     let root = &options.root;
     let content = content::load(root)?;
@@ -85,11 +92,27 @@ fn generate(options: &Options) -> Result<Generated, Vec<Problem>> {
         corner: corner.as_ref(),
         renditions: &renditions,
     };
-    let pages = render_pages(&view, &content);
+    let out = out_display(options);
+    let (pages, html_files) = render_pages(&view, &content, &out);
     let extra = vec![
         ("sitemap.xml".to_owned(), sitemap(&content)),
         ("llms.txt".to_owned(), llms(&content)),
     ];
+    problems.extend(check_output(
+        &out, &statics, &pages, &extra, &binary, html_files,
+    ));
+    let mut texts = source_texts(root, &statics, &mut problems);
+    for (rel, text) in &extra {
+        texts.push((format!("{out}/{rel}"), text.clone()));
+    }
+    for (shown, text) in &texts {
+        problems.extend(check::em_dashes(shown, text));
+    }
+    if !problems.is_empty() {
+        problems.sort();
+        problems.dedup();
+        return Err(problems);
+    }
     let static_files = statics.into_iter().map(|s| (s.rel, s.path)).collect();
     Ok(Generated {
         pages,
@@ -249,17 +272,108 @@ fn discover_renditions(
     found
 }
 
-fn render_pages(view: &View<'_>, content: &Content) -> Files {
+fn render_pages(view: &View<'_>, content: &Content, out: &str) -> (Files, Vec<HtmlFile>) {
     let mut pages = Vec::new();
+    let mut html_files = Vec::new();
     for (i, page) in content.pages.iter().enumerate() {
-        let rel = if page.kind() == Kind::NotFound {
+        let not_found = page.kind() == Kind::NotFound;
+        let rel = if not_found {
             "404.html".to_owned()
         } else {
             format!("{}index.html", &page.route[1..])
         };
-        pages.push((rel, view.page(i)));
+        let html = view.page(i);
+        html_files.push(HtmlFile {
+            display: format!("{out}/{rel}"),
+            route: (!not_found).then(|| page.route.clone()),
+            html: html.clone(),
+            not_found,
+        });
+        pages.push((rel, html));
     }
-    pages
+    (pages, html_files)
+}
+
+fn check_output(
+    out: &str,
+    statics: &[StaticFile],
+    pages: &Files,
+    extra: &Files,
+    binary: &Binaries,
+    html_files: Vec<HtmlFile>,
+) -> Vec<Problem> {
+    let mut problems = Vec::new();
+    let mut files: BTreeMap<String, usize> =
+        statics.iter().map(|s| (s.rel.clone(), s.size)).collect();
+    let generated: BTreeSet<&str> = pages
+        .iter()
+        .chain(extra)
+        .map(|(rel, _)| rel.as_str())
+        .chain(binary.iter().map(|(rel, _)| rel.as_str()))
+        .collect();
+    let generated_dirs: BTreeSet<&str> = generated.iter().flat_map(|g| ancestors(g)).collect();
+    let static_dirs: BTreeSet<&str> = statics.iter().flat_map(|s| ancestors(&s.rel)).collect();
+    for file in statics {
+        if generated.contains(file.rel.as_str()) {
+            problems.push(Problem::new(
+                &file.display,
+                format!("collides with the generated {out}/{}", file.rel),
+            ));
+        }
+        if generated_dirs.contains(file.rel.as_str()) {
+            problems.push(Problem::new(
+                &file.display,
+                format!(
+                    "is a file where the build writes the directory {out}/{}/",
+                    file.rel
+                ),
+            ));
+        }
+    }
+    for rel in &generated {
+        if static_dirs.contains(rel) {
+            problems.push(Problem::new(
+                format!("static/{rel}/"),
+                format!("is a directory where the build writes the file {out}/{rel}"),
+            ));
+        }
+    }
+    for (rel, text) in pages.iter().chain(extra) {
+        files.insert(rel.clone(), text.len());
+    }
+    for (rel, bytes) in binary {
+        files.insert(rel.clone(), bytes.len());
+    }
+    problems.extend(check::run(&Output {
+        out_dir: out.to_owned(),
+        pages: html_files,
+        files,
+    }));
+    problems
+}
+
+fn ancestors(rel: &str) -> impl Iterator<Item = &str> {
+    rel.match_indices('/').map(move |(i, _)| &rel[..i])
+}
+
+fn source_texts(root: &Path, statics: &[StaticFile], problems: &mut Vec<Problem>) -> Files {
+    let mut texts = Vec::new();
+    match walk(&root.join("content")) {
+        Ok(sources) => {
+            for source in sources {
+                if let Ok(text) = fs::read_to_string(&source) {
+                    texts.push((display(root, &source), text));
+                }
+            }
+        }
+        Err(e) => problems.push(Problem::new("content", format!("cannot read: {e}"))),
+    }
+    texts.extend(
+        statics
+            .iter()
+            .filter_map(|s| s.text.clone().map(|t| (s.display.clone(), t))),
+    );
+    texts
 }
 
 fn check_site(content: &Content) -> Vec<Problem> {
@@ -393,7 +507,10 @@ fn render_bodies(
 
 struct StaticFile {
     rel: String,
+    display: String,
     path: PathBuf,
+    size: usize,
+    text: Option<String>,
 }
 
 fn list_static(root: &Path, dir: &Path, problems: &mut Vec<Problem>) -> Vec<StaticFile> {
@@ -418,7 +535,38 @@ fn list_static(root: &Path, dir: &Path, problems: &mut Vec<Problem>) -> Vec<Stat
             ));
             continue;
         }
-        out.push(StaticFile { rel, path });
+        let size = match fs::metadata(&path) {
+            Ok(meta) => usize::try_from(meta.len()).unwrap_or(usize::MAX),
+            Err(e) => {
+                problems.push(Problem::new(&shown, format!("cannot read: {e}")));
+                continue;
+            }
+        };
+        let is_text = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .is_some_and(|e| TEXT_EXTENSIONS.contains(&e));
+        let text = if is_text {
+            match fs::read_to_string(&path) {
+                Ok(text) => Some(text),
+                Err(e) => {
+                    problems.push(Problem::new(
+                        &shown,
+                        format!("cannot read as UTF-8 text: {e}"),
+                    ));
+                    continue;
+                }
+            }
+        } else {
+            None
+        };
+        out.push(StaticFile {
+            rel,
+            display: shown,
+            path,
+            size,
+            text,
+        });
     }
     out
 }

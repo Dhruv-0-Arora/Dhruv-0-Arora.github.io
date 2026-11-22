@@ -13,6 +13,7 @@ glyph-bake = { path = "../glyph-bake" }
 imagesize = "0.15.0"
 maud = "0.27.0"
 pulldown-cmark = { version = "0.13.6", default-features = false, features = ["html"] }
+scraper = "0.29.0"
 serde = { version = "1.0.229", features = ["derive"] }
 toml = "1.2.2"
 

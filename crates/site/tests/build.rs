@@ -214,6 +214,39 @@ fn corner_wasm_path_can_be_overridden() {
 }
 
 #[test]
+fn corner_files_collide_with_static() {
+    let fixture = with_corner("corner-collide");
+    fixture.write("static/dozer.glyph", "x");
+    fixture.write("static/glyph.wasm", "x");
+    let errors = fixture.errors();
+    has(
+        &errors,
+        "static/dozer.glyph: collides with the generated dist/dozer.glyph",
+    );
+    has(
+        &errors,
+        "static/glyph.wasm: collides with the generated dist/glyph.wasm",
+    );
+}
+
+#[test]
+fn corner_budgets() {
+    let fixture = with_corner("corner-budget");
+    fs::write(
+        fixture.root.join("target/glyph.wasm"),
+        vec![0u8; 12 * 1024 + 1],
+    )
+    .unwrap();
+    fixture.write("static/glyph.js", &"x".repeat(4 * 1024 + 1));
+    let errors = fixture.errors();
+    has(
+        &errors,
+        "dist/glyph.wasm: is 12289 bytes; the budget is 12288",
+    );
+    has(&errors, "dist/glyph.js: is 4097 bytes; the budget is 4096");
+}
+
+#[test]
 fn without_a_corner_nothing_glyph_is_emitted() {
     let fixture = Fixture::new("no-corner");
     let mut options = fixture.options();
@@ -264,6 +297,26 @@ fn reports_every_problem_not_just_the_first() {
 }
 
 #[test]
+fn broken_internal_link() {
+    let fixture = Fixture::new("link");
+    fixture.append("content/notes.md", "\n[gone](/nowhere/)\n");
+    has(
+        &fixture.errors(),
+        "dist/notes/index.html: href=\"/nowhere/\": no page has this route",
+    );
+}
+
+#[test]
+fn missing_fragment() {
+    let fixture = Fixture::new("fragment");
+    fixture.append("content/notes.md", "\n[gone](/projects/alpha/#nope)\n");
+    has(
+        &fixture.errors(),
+        "href=\"/projects/alpha/#nope\": the target page has no id `nope`",
+    );
+}
+
+#[test]
 fn relative_link() {
     let fixture = Fixture::new("relative");
     fixture.append("content/notes.md", "\n[rel](alpha/)\n");
@@ -288,6 +341,13 @@ fn skipped_heading_level() {
         &fixture.errors(),
         "content/about.md:6: h3 skips a level after h1; use h2",
     );
+}
+
+#[test]
+fn duplicate_title() {
+    let fixture = Fixture::new("title");
+    fixture.write("content/about.md", "+++\nkind = \"page\"\ntitle = \"Notes\"\ndescription = \"Same title as the notes page, which must fail.\"\n+++\n");
+    has(&fixture.errors(), "has the same <title> as");
 }
 
 #[test]
@@ -318,6 +378,50 @@ fn image_without_alt_or_file() {
     has(
         &errors,
         "content/notes.md:26: image `/gone.png` does not exist under static/",
+    );
+}
+
+#[test]
+fn em_dash_in_content_and_static() {
+    let fixture = Fixture::new("emdash");
+    fixture.append("content/notes.md", "\nOne \u{2014} two.\n");
+    fixture.write("static/extra.txt", "fine\nnot \u{2014} fine\n");
+    let errors = fixture.errors();
+    has(&errors, "content/notes.md:24: contains an em dash");
+    has(&errors, "dist/notes/index.html:");
+    has(&errors, "static/extra.txt:2: contains an em dash");
+}
+
+#[test]
+fn html_weight_budget() {
+    let fixture = Fixture::new("weight");
+    fixture.append("content/notes.md", &format!("\n{}\n", "word ".repeat(7000)));
+    has(&fixture.errors(), "dist/notes/index.html: is ");
+}
+
+#[test]
+fn asset_weight_budget() {
+    let fixture = Fixture::new("asset-weight");
+    fixture.write("static/theme.js", &"x".repeat(1025));
+    has(
+        &fixture.errors(),
+        "dist/theme.js: is 1025 bytes; the budget is 1024",
+    );
+}
+
+#[test]
+fn static_collides_with_generated() {
+    let fixture = Fixture::new("collide");
+    fixture.write("static/sitemap.xml", "<urlset/>");
+    fixture.write("static/notes/index.html", "<p>shadow</p>");
+    let errors = fixture.errors();
+    has(
+        &errors,
+        "static/sitemap.xml: collides with the generated dist/sitemap.xml",
+    );
+    has(
+        &errors,
+        "static/notes/index.html: collides with the generated dist/notes/index.html",
     );
 }
 
@@ -540,6 +644,16 @@ fn kind_scripts_load_only_where_needed_and_must_exist() {
     );
 }
 
+#[test]
+fn gallery_script_budget() {
+    let fixture = Fixture::new("gallery-budget");
+    fixture.write("static/gallery.js", &"x".repeat(513));
+    has(
+        &fixture.errors(),
+        "dist/gallery.js: is 513 bytes; the budget is 512",
+    );
+}
+
 fn tree(root: &Path) -> Vec<(String, Vec<u8>)> {
     let mut out = Vec::new();
     let mut stack = vec![root.to_path_buf()];
@@ -580,6 +694,25 @@ fn a_failed_write_leaves_the_previous_build_untouched() {
     assert!(fixture.read("notes/index.html").contains("A new line"));
     assert_eq!(fixture.read("sim/index.html"), "simulator");
     assert!(!fixture.root.join("dist.tmp").exists());
+}
+
+#[test]
+fn a_file_where_the_build_needs_a_directory_is_reported_before_writing() {
+    let fixture = Fixture::new("file-dir");
+    site::build(&fixture.options()).unwrap();
+    let before = tree(&fixture.root.join("dist"));
+    fixture.write("static/notes", "a file named like a page");
+    fixture.write("static/llms.txt/inner.txt", "a directory named like a file");
+    let errors = fixture.errors();
+    has(
+        &errors,
+        "static/notes: is a file where the build writes the directory dist/notes/",
+    );
+    has(
+        &errors,
+        "static/llms.txt/: is a directory where the build writes the file dist/llms.txt",
+    );
+    assert_eq!(tree(&fixture.root.join("dist")), before);
 }
 
 #[test]
