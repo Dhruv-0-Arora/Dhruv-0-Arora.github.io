@@ -1,0 +1,32 @@
+title = "Dhruv Arora"
+url = "https://darora1.me"
+footer = "Written in Rust. [Source](https://github.com/Dhruv-0-Arora/Dhruv-0-Arora.github.io)."
+vocabulary = ["Mirabuf", "Fusion 360", "OCCT", "Metal", "evdev", "Hyprland", "TF.js", "BERT", "GRU", "LiDAR", "ROS 2", "Kalshi", "Express", "Firebase", "Tailwind CSS", "Vite"]
+vocabulary_skip = ["C", "Go"]
+
+[[links]]
+title = "resume"
+href = "/resume/Arora_Dhruv_Resume.pdf"
+
+[[links]]
+title = "simulator"
+href = "/sim/"
+
+[[elsewhere]]
+label = "github"
+href = "https://github.com/Dhruv-0-Arora"
+text = "Dhruv-0-Arora"
+
+[[elsewhere]]
+label = "linkedin"
+href = "https://www.linkedin.com/in/dhruv0arora"
+text = "dhruv0arora"
+
+[[elsewhere]]
+label = "email"
+href = "mailto:a_dhruv@outlook.com"
+text = "a_dhruv@outlook.com"
+
+[corner]
+model = "sim/public/models/dozer.mira"
+href = "/sim/"
