@@ -22,6 +22,9 @@ test: wasm
 site: wasm
     cargo run -p site --release -- build
 
+serve: wasm
+    cargo run -p site -- serve
+
 html:
     find dist -name '*.html' -not -path 'dist/sim/*' -print0 | xargs -0 vnu
 

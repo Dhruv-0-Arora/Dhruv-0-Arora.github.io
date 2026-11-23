@@ -9,6 +9,8 @@ mod markdown;
 mod matter;
 mod problem;
 mod render;
+mod serve;
 
 pub use build::{Gate, Options, Summary, build};
 pub use problem::Problem;
+pub use serve::serve;

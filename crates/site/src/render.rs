@@ -8,6 +8,8 @@ use crate::matter::{Gallery, Home, Kind, Matter, Project, Section, THUMB_PREFIX}
 
 const THEME_BOOT: &str = r#"try{var d=document.documentElement,t=new URLSearchParams(location.search).get("theme");if(t!="light"&&t!="dark")t=localStorage.getItem("theme");if(t=="light"||t=="dark")d.dataset.theme=t}catch(e){}"#;
 
+const LIVE_RELOAD: &str = r#"<script>(()=>{let v;setInterval(async()=>{try{const r=await(await fetch("/__build")).text();if(v&&r!==v)location.reload();v=r}catch{}},400)})()</script>"#;
+
 #[derive(Debug, Clone)]
 pub struct Corner {
     pub frame_html: String,
@@ -55,6 +57,7 @@ pub struct View<'a> {
     pub assets: &'a Assets,
     pub corner: Option<&'a Corner>,
     pub renditions: &'a BTreeMap<String, Vec<Rendition>>,
+    pub live_reload: bool,
 }
 
 fn nl() -> PreEscaped<&'static str> {
@@ -137,6 +140,9 @@ impl View<'_> {
                         (nl())
                     }
                     (nl())
+                    @if self.live_reload {
+                        (PreEscaped(LIVE_RELOAD)) (nl())
+                    }
                 }
                 (nl())
             }

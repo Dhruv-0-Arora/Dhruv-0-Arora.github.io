@@ -5,7 +5,7 @@ use clap::{Args, Parser, Subcommand};
 use site::{Gate, Options, Problem, Summary};
 
 #[derive(Parser)]
-#[command(name = "site", about = "Build darora1.me")]
+#[command(name = "site", about = "Build and serve darora1.me")]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -14,6 +14,12 @@ struct Cli {
 #[derive(Subcommand)]
 enum Command {
     Build(BuildArgs),
+    Serve {
+        #[command(flatten)]
+        build: BuildArgs,
+        #[arg(long, default_value_t = 4000)]
+        port: u16,
+    },
 }
 
 #[derive(Args)]
@@ -31,7 +37,7 @@ struct BuildArgs {
 }
 
 impl BuildArgs {
-    fn options(self) -> Options {
+    fn options(self, live_reload: bool) -> Options {
         let mut options = Options::new(self.root);
         if let Some(out) = self.out {
             options.out = out;
@@ -41,6 +47,7 @@ impl BuildArgs {
         }
         options.claims = self.claims;
         options.require_claims = self.require_claims;
+        options.live_reload = live_reload;
         options
     }
 }
@@ -74,7 +81,7 @@ fn report(result: &Result<Summary, Vec<Problem>>) {
 fn main() -> ExitCode {
     match Cli::parse().command {
         Command::Build(args) => {
-            let result = site::build(&args.options());
+            let result = site::build(&args.options(false));
             report(&result);
             if result.is_ok() {
                 ExitCode::SUCCESS
@@ -82,5 +89,12 @@ fn main() -> ExitCode {
                 ExitCode::FAILURE
             }
         }
+        Command::Serve { build, port } => match site::serve(&build.options(true), port, report) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(message) => {
+                eprintln!("{message}");
+                ExitCode::FAILURE
+            }
+        },
     }
 }

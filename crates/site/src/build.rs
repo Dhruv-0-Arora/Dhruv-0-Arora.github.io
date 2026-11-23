@@ -24,6 +24,7 @@ pub struct Options {
     pub out: PathBuf,
     pub claims: Option<PathBuf>,
     pub require_claims: bool,
+    pub live_reload: bool,
     pub wasm: PathBuf,
 }
 
@@ -36,6 +37,7 @@ impl Options {
             root,
             claims: None,
             require_claims: false,
+            live_reload: false,
         }
     }
 }
@@ -105,6 +107,7 @@ fn generate(options: &Options) -> Result<(Generated, Gate), Vec<Problem>> {
         assets: &assets,
         corner: corner.as_ref(),
         renditions: &renditions,
+        live_reload: options.live_reload,
     };
     let out = out_display(options);
     let (pages, html_files) = render_pages(&view, &content, &out);

@@ -275,6 +275,17 @@ fn llms_txt_goes_through_the_gates() {
 }
 
 #[test]
+fn live_reload_is_only_injected_in_serve_mode() {
+    let fixture = Fixture::new("reload");
+    site::build(&fixture.options()).unwrap();
+    assert!(!fixture.read("index.html").contains("__build"));
+    let mut options = fixture.options();
+    options.live_reload = true;
+    site::build(&options).unwrap();
+    assert!(fixture.read("index.html").contains("fetch(\"/__build\")"));
+}
+
+#[test]
 fn sim_survives_and_everything_else_is_cleaned() {
     let fixture = Fixture::new("sim");
     fixture.write("dist/sim/index.html", "simulator");
