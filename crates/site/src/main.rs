@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::{Args, Parser, Subcommand};
-use site::{Options, Problem, Summary};
+use site::{Gate, Options, Problem, Summary};
 
 #[derive(Parser)]
 #[command(name = "site", about = "Build darora1.me")]
@@ -23,6 +23,10 @@ struct BuildArgs {
     #[arg(long)]
     out: Option<PathBuf>,
     #[arg(long)]
+    claims: Option<PathBuf>,
+    #[arg(long)]
+    require_claims: bool,
+    #[arg(long)]
     wasm: Option<PathBuf>,
 }
 
@@ -35,6 +39,8 @@ impl BuildArgs {
         if let Some(wasm) = self.wasm {
             options.wasm = wasm;
         }
+        options.claims = self.claims;
+        options.require_claims = self.require_claims;
         options
     }
 }
@@ -42,6 +48,14 @@ impl BuildArgs {
 fn report(result: &Result<Summary, Vec<Problem>>) {
     match result {
         Ok(summary) => {
+            match &summary.gate {
+                Gate::Checked { file, phrases } => {
+                    println!("claims gate: {phrases} phrases from {file}, none found");
+                }
+                Gate::Skipped => {
+                    println!("claims gate skipped: no --claims file and no profile/claims.md");
+                }
+            }
             println!(
                 "built {} pages and copied {} static files",
                 summary.pages, summary.static_files

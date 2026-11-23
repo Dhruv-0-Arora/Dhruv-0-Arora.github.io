@@ -20,6 +20,15 @@ pub struct Site {
     #[serde(default)]
     pub elsewhere: Vec<Elsewhere>,
     pub corner: Option<CornerSource>,
+    #[serde(default)]
+    pub vetted: Vec<Vetted>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Vetted {
+    pub file: String,
+    pub hash: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]

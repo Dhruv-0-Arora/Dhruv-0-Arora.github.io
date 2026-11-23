@@ -3,6 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::check::{self, HtmlFile, Output};
+use crate::claims;
 use crate::content::{self, Content};
 use crate::files::{display, slash_path, walk};
 use crate::hash::fnv1a;
@@ -21,6 +22,8 @@ const KEEP: &str = "sim";
 pub struct Options {
     pub root: PathBuf,
     pub out: PathBuf,
+    pub claims: Option<PathBuf>,
+    pub require_claims: bool,
     pub wasm: PathBuf,
 }
 
@@ -31,14 +34,23 @@ impl Options {
             out: root.join("dist"),
             wasm: root.join("target/glyph.wasm"),
             root,
+            claims: None,
+            require_claims: false,
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Gate {
+    Checked { file: String, phrases: usize },
+    Skipped,
 }
 
 #[derive(Debug, Clone)]
 pub struct Summary {
     pub pages: usize,
     pub static_files: usize,
+    pub gate: Gate,
 }
 
 struct Generated {
@@ -49,11 +61,12 @@ struct Generated {
 }
 
 pub fn build(options: &Options) -> Result<Summary, Vec<Problem>> {
-    let generated = generate(options)?;
+    let (generated, gate) = generate(options)?;
     write(options, &generated)?;
     Ok(Summary {
         pages: generated.pages.len(),
         static_files: generated.static_files.len(),
+        gate,
     })
 }
 
@@ -62,7 +75,7 @@ fn out_display(options: &Options) -> String {
     if shown.is_empty() { ".".into() } else { shown }
 }
 
-fn generate(options: &Options) -> Result<Generated, Vec<Problem>> {
+fn generate(options: &Options) -> Result<(Generated, Gate), Vec<Problem>> {
     let root = &options.root;
     let content = content::load(root)?;
     let mut problems = check_site(&content);
@@ -75,6 +88,7 @@ fn generate(options: &Options) -> Result<Generated, Vec<Problem>> {
         });
     let bodies = render_bodies(&content, &static_dir, &highlighter, &mut problems);
     let statics = list_static(root, &static_dir, &mut problems);
+    problems.extend(vet_pdfs(&content, &statics));
     let renditions = discover_renditions(&content, &static_dir, &mut problems);
     let assets = assets(root, &content, &static_dir, &mut problems);
     let (corner, binary) = bake_corner(options, &content, &mut problems);
@@ -108,18 +122,26 @@ fn generate(options: &Options) -> Result<Generated, Vec<Problem>> {
     for (shown, text) in &texts {
         problems.extend(check::em_dashes(shown, text));
     }
+    let html: Files = pages
+        .iter()
+        .map(|(rel, text)| (format!("{out}/{rel}"), text.clone()))
+        .collect();
+    let gate = claims_gate(options, &texts, &html, &mut problems);
     if !problems.is_empty() {
         problems.sort();
         problems.dedup();
         return Err(problems);
     }
     let static_files = statics.into_iter().map(|s| (s.rel, s.path)).collect();
-    Ok(Generated {
-        pages,
-        extra,
-        binary,
-        static_files,
-    })
+    Ok((
+        Generated {
+            pages,
+            extra,
+            binary,
+            static_files,
+        },
+        gate,
+    ))
 }
 
 type Files = Vec<(String, String)>;
@@ -352,6 +374,64 @@ fn check_output(
     problems
 }
 
+fn vet_pdfs(content: &Content, statics: &[StaticFile]) -> Vec<Problem> {
+    let source = content.site_source.as_str();
+    let mut problems = Vec::new();
+    let mut entries: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
+    for entry in &content.site.vetted {
+        entries
+            .entry(entry.file.as_str())
+            .or_default()
+            .push(entry.hash.as_str());
+    }
+    for (file, hashes) in &entries {
+        if hashes.len() > 1 {
+            problems.push(Problem::new(
+                source,
+                format!("[[vetted]] lists \"{file}\" more than once; keep one entry"),
+            ));
+        }
+        if !statics.iter().any(|s| s.rel == *file) {
+            problems.push(Problem::new(
+                source,
+                format!("[[vetted]] file \"{file}\" does not exist under static/"),
+            ));
+        }
+    }
+    for file in statics {
+        let is_pdf = Path::new(&file.rel)
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("pdf"));
+        if !is_pdf {
+            continue;
+        }
+        let actual = match fs::read(&file.path) {
+            Ok(bytes) => fnv1a(&bytes),
+            Err(e) => {
+                problems.push(Problem::new(&file.display, format!("cannot read: {e}")));
+                continue;
+            }
+        };
+        match entries.get(file.rel.as_str()).map(Vec::as_slice) {
+            None => problems.push(Problem::new(
+                &file.display,
+                format!(
+                    "the claims gate cannot read PDFs; check its text against the claims list by hand, then add `[[vetted]]` with `file = \"{}\"` and `hash = \"{actual}\"` to {source}",
+                    file.rel
+                ),
+            )),
+            Some([vetted]) if *vetted != actual => problems.push(Problem::new(
+                &file.display,
+                format!(
+                    "changed since it was vetted (hash is now \"{actual}\", {source} says \"{vetted}\"); check its text again, then update the hash"
+                ),
+            )),
+            Some(_) => {}
+        }
+    }
+    problems
+}
+
 fn ancestors(rel: &str) -> impl Iterator<Item = &str> {
     rel.match_indices('/').map(move |(i, _)| &rel[..i])
 }
@@ -569,6 +649,56 @@ fn list_static(root: &Path, dir: &Path, problems: &mut Vec<Problem>) -> Vec<Stat
         });
     }
     out
+}
+
+fn claims_gate(
+    options: &Options,
+    texts: &[(String, String)],
+    html: &[(String, String)],
+    problems: &mut Vec<Problem>,
+) -> Gate {
+    let default = options.root.join("profile/claims.md");
+    let path = match &options.claims {
+        Some(path) => path.clone(),
+        None if default.is_file() => default,
+        None => {
+            if options.require_claims {
+                problems.push(Problem::new(
+                    display(&options.root, &default),
+                    "--require-claims is set but there is no claims file; pass --claims <file> or link profile/",
+                ));
+            }
+            return Gate::Skipped;
+        }
+    };
+    let shown = display(&options.root, &path);
+    let text = match fs::read_to_string(&path) {
+        Ok(text) => text,
+        Err(e) => {
+            problems.push(Problem::new(
+                &shown,
+                format!("cannot read the claims file: {e}"),
+            ));
+            return Gate::Skipped;
+        }
+    };
+    let phrases = match claims::blocklist(&shown, &text) {
+        Ok(phrases) => phrases,
+        Err(p) => {
+            problems.push(p);
+            return Gate::Skipped;
+        }
+    };
+    for (file, body) in texts {
+        problems.extend(claims::scan(&shown, &phrases, file, body));
+    }
+    for (file, body) in html {
+        problems.extend(claims::scan_page(&shown, &phrases, file, body));
+    }
+    Gate::Checked {
+        file: shown,
+        phrases: phrases.len(),
+    }
 }
 
 fn write(options: &Options, generated: &Generated) -> Result<(), Vec<Problem>> {

@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use site::Options;
+use site::{Gate, Options};
 
 struct Fixture {
     root: PathBuf,
@@ -82,6 +82,7 @@ fn renders_every_page_kind() {
     let fixture = Fixture::new("snapshots");
     let summary = site::build(&fixture.options()).unwrap();
     assert_eq!(summary.pages, 9);
+    assert_eq!(summary.gate, Gate::Skipped);
     for (name, rel) in [
         ("home", "index.html"),
         ("section", "projects/index.html"),
@@ -255,6 +256,22 @@ fn without_a_corner_nothing_glyph_is_emitted() {
     assert!(!fixture.root.join("dist/dozer.glyph").exists());
     assert!(!fixture.root.join("dist/glyph.wasm").exists());
     assert!(!fixture.read("index.html").contains("glyph"));
+}
+
+#[test]
+fn llms_txt_goes_through_the_gates() {
+    let fixture = Fixture::new("llms-gates");
+    let site = fs::read_to_string(fixture.root.join("content/site.toml")).unwrap();
+    fixture.write(
+        "content/site.toml",
+        &site
+            .replace("text = \"example since 2019\"", "text = \"fine\"")
+            .replace("label = \"code\"", "label = \"project bluebird\""),
+    );
+    let mut options = fixture.options();
+    options.claims = Some(fixtures().join("claims.md"));
+    let errors = failures(&options);
+    has(&errors, "dist/llms.txt:");
 }
 
 #[test]
@@ -488,6 +505,57 @@ fn file_layout_is_strict() {
 }
 
 #[test]
+fn claims_gate_blocks_phrases_everywhere() {
+    let fixture = Fixture::new("claims");
+    fixture.append("content/notes.md", "\nWorked for ACME secret agency.\n");
+    fixture.write(
+        "static/extra.svg",
+        "<svg><title>Project Bluebird</title></svg>\n",
+    );
+    let mut options = fixture.options();
+    options.claims = Some(fixtures().join("claims.md"));
+    let errors = failures(&options);
+    has(&errors, "content/notes.md:24: contains a blocked phrase (");
+    has(&errors, "dist/notes/index.html:");
+    has(&errors, "static/extra.svg:1: contains a blocked phrase (");
+    assert!(
+        errors.iter().all(|e| !e.to_lowercase().contains("acme")),
+        "the phrase itself must not be printed"
+    );
+}
+
+#[test]
+fn claims_gate_passes_and_reports_when_clean() {
+    let fixture = Fixture::new("claims-clean");
+    let mut options = fixture.options();
+    options.claims = Some(fixtures().join("claims.md"));
+    let summary = site::build(&options).unwrap();
+    assert!(matches!(summary.gate, Gate::Checked { phrases: 3, .. }));
+}
+
+#[test]
+fn claims_gate_finds_the_profile_link_by_default() {
+    let fixture = Fixture::new("claims-default");
+    fixture.write(
+        "profile/claims.md",
+        &fs::read_to_string(fixtures().join("claims.md")).unwrap(),
+    );
+    fixture.append("content/notes.md", "\nproject bluebird\n");
+    has(&fixture.errors(), "profile/claims.md:7)");
+}
+
+#[test]
+fn claims_gate_can_be_required() {
+    let fixture = Fixture::new("claims-required");
+    let mut options = fixture.options();
+    options.require_claims = true;
+    has(
+        &failures(&options),
+        "profile/claims.md: --require-claims is set but there is no claims file",
+    );
+}
+
+#[test]
 fn nav_lists_groups_and_opens_the_current_group() {
     let fixture = Fixture::new("nav-groups");
     site::build(&fixture.options()).unwrap();
@@ -654,6 +722,41 @@ fn gallery_script_budget() {
     );
 }
 
+#[test]
+fn claims_gate_sees_through_line_breaks_markup_and_attributes() {
+    let fixture = Fixture::new("claims-hard");
+    fixture.append(
+        "content/notes.md",
+        "\nWe won 2nd\nplace once.\n\nOn the Project\n  Bluebird team.\n\n![project bluebird](/dot.png)\n",
+    );
+    let mut options = fixture.options();
+    options.claims = Some(fixtures().join("claims.md"));
+    let errors = failures(&options);
+    has(&errors, "content/notes.md:24: contains a blocked phrase (");
+    has(&errors, "content/notes.md:27: contains a blocked phrase (");
+    has(&errors, "content/notes.md:30: contains a blocked phrase (");
+    has(
+        &errors,
+        "dist/notes/index.html: page text contains a blocked phrase (",
+    );
+    let page_text: Vec<&String> = errors
+        .iter()
+        .filter(|e| e.starts_with("dist/notes/index.html: page text"))
+        .collect();
+    assert!(
+        page_text.len() == 1 && page_text[0].ends_with("claims.md:8)"),
+        "{errors:#?}"
+    );
+    assert!(
+        errors
+            .iter()
+            .any(|e| e.starts_with("dist/notes/index.html:")
+                && !e.contains("page text")
+                && e.ends_with("claims.md:7)")),
+        "{errors:#?}"
+    );
+}
+
 fn tree(root: &Path) -> Vec<(String, Vec<u8>)> {
     let mut out = Vec::new();
     let mut stack = vec![root.to_path_buf()];
@@ -744,5 +847,67 @@ fn editor_and_os_junk_is_ignored_in_both_trees() {
             .iter()
             .all(|rel| !rel.starts_with('.') && !rel.contains("/.") && !rel.ends_with('~')),
         "{published:#?}"
+    );
+}
+
+fn vetted_entry(file: &str, hash: &str) -> String {
+    format!("\n[[vetted]]\nfile = \"{file}\"\nhash = \"{hash}\"\n")
+}
+
+#[test]
+fn vetted_pdfs_pass() {
+    let fixture = Fixture::new("vetted-ok");
+    fixture.write("static/docs/cv.PDF", "%PDF-1.7 fixture");
+    fixture.append(
+        "content/site.toml",
+        &vetted_entry("docs/cv.PDF", &fnv1a(b"%PDF-1.7 fixture")),
+    );
+    site::build(&fixture.options()).unwrap();
+    assert_eq!(fixture.read("docs/cv.PDF"), "%PDF-1.7 fixture");
+}
+
+#[test]
+fn unvetted_pdf_prints_the_hash_to_paste() {
+    let fixture = Fixture::new("vetted-missing");
+    fixture.write("static/cv.pdf", "%PDF-1.7 fixture");
+    has(
+        &fixture.errors(),
+        &format!(
+            "static/cv.pdf: the claims gate cannot read PDFs; check its text against the claims list by hand, then add `[[vetted]]` with `file = \"cv.pdf\"` and `hash = \"{}\"` to content/site.toml",
+            fnv1a(b"%PDF-1.7 fixture")
+        ),
+    );
+}
+
+#[test]
+fn changed_pdf_prints_its_new_hash() {
+    let fixture = Fixture::new("vetted-changed");
+    fixture.write("static/cv.pdf", "%PDF-1.7 edited");
+    fixture.append("content/site.toml", &vetted_entry("cv.pdf", "00000000"));
+    has(
+        &fixture.errors(),
+        &format!(
+            "static/cv.pdf: changed since it was vetted (hash is now \"{}\", content/site.toml says \"00000000\")",
+            fnv1a(b"%PDF-1.7 edited")
+        ),
+    );
+}
+
+#[test]
+fn vetted_entries_must_name_one_existing_file() {
+    let fixture = Fixture::new("vetted-entries");
+    let hash = fnv1a(b"%PDF-1.7 fixture");
+    fixture.write("static/cv.pdf", "%PDF-1.7 fixture");
+    fixture.append("content/site.toml", &vetted_entry("cv.pdf", &hash));
+    fixture.append("content/site.toml", &vetted_entry("cv.pdf", &hash));
+    fixture.append("content/site.toml", &vetted_entry("gone.pdf", &hash));
+    let errors = fixture.errors();
+    has(
+        &errors,
+        "content/site.toml: [[vetted]] lists \"cv.pdf\" more than once",
+    );
+    has(
+        &errors,
+        "content/site.toml: [[vetted]] file \"gone.pdf\" does not exist under static/",
     );
 }

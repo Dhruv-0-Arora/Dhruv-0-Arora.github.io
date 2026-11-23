@@ -30,3 +30,7 @@ text = "a_dhruv@outlook.com"
 [corner]
 model = "sim/public/models/dozer.mira"
 href = "/sim/"
+
+[[vetted]]
+file = "resume/Arora_Dhruv_Resume.pdf"
+hash = "8ae0d96c"
