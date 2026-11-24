@@ -18,7 +18,6 @@ export const projects: Project[] = [
     tech: ["C#", "React", "TypeScript", "Three.js", "Protobuf"],
     repo: "https://github.com/Autodesk/synthesis",
     demo: "https://synthesis.autodesk.com",
-    tier: "featured",
     highlight: "5K to 20K+ users",
   },
   {
@@ -36,7 +35,6 @@ export const projects: Project[] = [
       "Benchmarks on 10,000 notes: ~230 ms cold reindex, ~40 ms warm commands, under 10 ms index load.",
     ],
     tech: ["Rust", "ratatui", "TOON", "CSR index", "criterion"],
-    tier: "featured",
     highlight: "230 ms cold reindex, 10k notes",
   },
   {
@@ -53,7 +51,6 @@ export const projects: Project[] = [
       "Collects historical weather ensemble data automatically to build a data flywheel for future models.",
     ],
     tech: ["Python", "Pandas", "Kalshi API", "cron", "backtesting"],
-    tier: "featured",
     highlight: "quarter-Kelly, maker-only",
   },
   {
@@ -66,7 +63,6 @@ export const projects: Project[] = [
     tech: ["TypeScript", "TensorFlow.js", "Chrome MV3", "Tesseract.js"],
     repo: "https://github.com/Dhruv-0-Arora/fegis",
     demo: "https://fegis.vercel.app",
-    tier: "featured",
     highlight: "12 PII types, fully local",
   },
   {
@@ -78,7 +74,6 @@ export const projects: Project[] = [
       "A clinical reasoning assistant built with Aditya Bankoti at a hackathon. Maps patient symptoms to potential diagnoses through an interactive graph visualization, driven entirely by an offline local model.",
     tech: ["React", "TypeScript", "PyTorch", "Ollama", "Sigma.js"],
     repo: "https://github.com/Dhruv-0-Arora/Asclepion",
-    tier: "featured",
     highlight: "runs fully offline",
   },
   {
@@ -88,7 +83,6 @@ export const projects: Project[] = [
       "Google Calendar CLI with token-efficient TOON output for LLM agents.",
     tech: ["CLI", "TOON", "Google Calendar API"],
     repo: "https://github.com/Dhruv-0-Arora/gcal-axi",
-    tier: "compact",
   },
   {
     name: "monkeytype-tui",
@@ -97,7 +91,6 @@ export const projects: Project[] = [
       "Monkeytype in the terminal, submitting real runs to the live API. Built in a day largely with AI assistance.",
     tech: ["Rust", "ratatui", "AI-assisted"],
     repo: "https://github.com/Dhruv-0-Arora/monkeytype-tui",
-    tier: "compact",
   },
   {
     name: "dirnt",
@@ -113,7 +106,6 @@ export const projects: Project[] = [
       "Supports truecolor when available and degrades gracefully under NO_COLOR.",
     ],
     tech: ["Rust", "Oklab", "ANSI"],
-    tier: "compact",
     highlight: "Oklab age gradient",
   },
   {
@@ -123,7 +115,6 @@ export const projects: Project[] = [
       "gh extension listing PRs that want your review, ranked by urgency.",
     tech: ["Rust", "GraphQL", "gh extension"],
     repo: "https://github.com/Dhruv-0-Arora",
-    tier: "compact",
   },
   {
     name: "obsidian-agile",
@@ -131,7 +122,6 @@ export const projects: Project[] = [
     tagline: "Fork of obsidian-kanban with agile-focused board workflows.",
     tech: ["TypeScript", "Obsidian"],
     repo: "https://github.com/Dhruv-0-Arora/obsidian-agile",
-    tier: "compact",
   },
   {
     name: "obsidian-firestorage",
@@ -139,7 +129,6 @@ export const projects: Project[] = [
     tagline: "Encrypted cloud sync plugin for Obsidian vaults.",
     tech: ["TypeScript", "Obsidian", "Firebase"],
     repo: "https://github.com/Dhruv-0-Arora/obsidian-firestorage",
-    tier: "compact",
   },
   {
     name: "Soundwave",
@@ -148,7 +137,6 @@ export const projects: Project[] = [
       "Accent-localization model that became a venture: $150K letter of intent, 1st globally at TiE Young Entrepreneurs.",
     tech: ["MFCCs", "audio ML", "MATLAB"],
     repo: "https://github.com/Dhruv-0-Arora/soundwave",
-    tier: "compact",
   },
   {
     name: "Wisconsin Racing",
@@ -164,7 +152,6 @@ export const projects: Project[] = [
       "Replaced a Raspberry Pi display with a microcontroller to trade generality for lower latency and power.",
     ],
     tech: ["C", "ESP32-S3", "STM32", "CMake", "reflow"],
-    tier: "compact",
     highlight: "battery safety firmware",
   },
   {
@@ -183,7 +170,6 @@ export const projects: Project[] = [
     ],
     tech: ["Python", "FastAPI", "Ollama", "networkx", "BM25", "React", "Bash"],
     repo: "https://github.com/Dhruv-0-Arora/Nazar",
-    tier: "featured",
     highlight: "2nd of 40 teams",
   },
   {
@@ -204,7 +190,6 @@ export const projects: Project[] = [
     tech: ["C++20", "Metal", "Slang", "SwiftUI", "LibRaw"],
     repo: "https://github.com/Nano-AI/Orion",
     demo: "https://nano-ai.github.io/Orion/",
-    tier: "featured",
     highlight: "24 MP raw in ~8 ms",
   },
   {
@@ -223,7 +208,6 @@ export const projects: Project[] = [
     ],
     tech: ["Python", "XGBoost", "PyTorch", "FastAPI", "React", "MapLibre"],
     repo: "https://github.com/Dhruv-0-Arora/Cypher",
-    tier: "featured",
     highlight: "my team, CascadiaJS 2026",
   },
   {
@@ -241,7 +225,6 @@ export const projects: Project[] = [
     ],
     tech: ["Python", "VLM", "DGX Spark", "HLS", "geospatial"],
     repo: "https://github.com/BerkM125/AltiGoz",
-    tier: "compact",
     highlight: "646 cameras",
   },
   {
@@ -261,7 +244,6 @@ export const projects: Project[] = [
     ],
     tech: ["Python", "Jupyter", "market making", "options"],
     repo: "https://github.com/Dhruv-0-Arora/imc-prosperity-4",
-    tier: "compact",
     highlight: "+114,664 in round 3",
   },
   {
@@ -279,7 +261,6 @@ export const projects: Project[] = [
       "Evaluates planner and executor success rates systematically, including tests without an LLM in the loop.",
     ],
     tech: ["Rust", "Python", "OCCT", "tscircuit", "React"],
-    tier: "compact",
     highlight: "own B-rep kernel",
   },
   {
@@ -295,7 +276,6 @@ export const projects: Project[] = [
       "Stack uses React, Express, Firebase, Tailwind CSS, Vite, and Vercel.",
     ],
     tech: ["React", "Express", "Firebase", "Tailwind CSS", "Vite", "Vercel"],
-    tier: "compact",
     highlight: "2,000+ users",
   },
   {
@@ -311,10 +291,6 @@ export const projects: Project[] = [
       "Sits on the seam between hobby and engineering as the most physical object I have designed.",
     ],
     tech: ["keyboard design", "PCB", "JavaScript"],
-    tier: "compact",
     highlight: "my own keyboard",
   },
 ];
-
-export const featuredProjects = projects.filter((p) => p.tier === "featured");
-export const compactProjects = projects.filter((p) => p.tier === "compact");

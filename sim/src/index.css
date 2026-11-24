@@ -1,5 +1,3 @@
-@import "@fontsource-variable/inter";
-@import "@fontsource-variable/space-grotesk";
 @import "@fontsource/jetbrains-mono";
 @import "tailwindcss";
 
@@ -105,26 +103,11 @@
 @theme inline {
   --color-bg: var(--c-bg);
   --color-surface: var(--c-surface);
-  --color-surface-2: var(--c-surface-2);
   --color-border: var(--c-border);
   --color-text: var(--c-text);
   --color-muted: var(--c-muted);
   --color-faint: var(--c-faint);
   --color-accent: var(--c-accent);
-  --color-accent-soft: var(--c-accent-soft);
-  --color-on-accent: var(--c-on-accent);
-  --color-hue-green: var(--c-hue-green);
-  --color-hue-sky: var(--c-hue-sky);
-  --color-hue-violet: var(--c-hue-violet);
-  --color-hue-rose: var(--c-hue-rose);
-  --color-hue-amber: var(--c-hue-amber);
-  --color-rock: var(--c-rock);
-  --color-snow: var(--c-snow);
-  --color-forest: var(--c-forest);
-  --color-water: var(--c-water);
-  --font-display:
-    "Space Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
 }
 
@@ -145,9 +128,7 @@ html:has([data-rail-spacer]) {
 }
 
 body {
-  @apply bg-bg font-sans text-text antialiased;
-  /* Full-bleed breakouts (projects showcase) must not create horizontal scroll. */
-  overflow-x: clip;
+  @apply bg-bg font-mono text-text antialiased;
   transition:
     background-color 200ms ease,
     color 200ms ease;

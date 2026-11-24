@@ -1,12 +1,12 @@
 # Architecture
 
-The site is a single React page that is, for capable browsers, a full-viewport explorable 3D world ("The Simulator").
-Everyone else gets the earlier static portfolio page.
+The simulator is a single React page that is, for capable browsers, a full-viewport explorable 3D world.
+Everyone else gets a one-screen notice that links to the plain site at `/`.
 
 ## Repository layout
 
 The app lives in `sim/` and is served at `/sim/`; paths below are relative to `sim/`.
-The repo root's `static/` holds files served at the site root (`CNAME`, `og.png`, `robots.txt`, `llms.txt`, `resume/`, `photos/`).
+The repo root's `static/` holds files served at the site root (`CNAME`, `og.png`, `robots.txt`, `resume/`, `photos/`).
 
 ```
 assets/blender/            world authoring: contract.json, world.blend, scripts/
@@ -23,10 +23,9 @@ public/media/              zone screen clips, built from originals
 ../static/photos/          carousel and gallery photos, built from originals, served at /photos/
 public/models/dozer.mira   the vehicle, parsed live in the browser
 src/simulator/             the simulator (see below)
-src/components/            the static page sections, reused as the fallback
 src/content/               all copy, typed data modules; components never hard-code text
 src/mirabuf/               .mira parser and robot builder (visual-only port of Synthesis Fission)
-src/lib/                   theme store, capability hooks
+src/lib/                   theme store, base path, idle and visibility hooks
 ```
 
 Untracked local material (excluded in `.git/info/exclude`): the content corpus in `data/`, agent instructions, planning notes.
@@ -34,7 +33,8 @@ Nothing in tracked files may depend on them.
 
 ## Runtime flow
 
-1. `SimulatorRoot` decides capability: `simulator`, or `reduced-motion` (static page with an "enter anyway" button), `narrow` (<380px) and `no-webgl` (static page).
+1. `SimulatorRoot` decides capability: `simulator`, or `reduced-motion` (the notice with an "enter anyway" button), `narrow` (<380px) and `no-webgl` (the notice).
+   A canvas that fails after mounting also falls back to the notice.
 2. `SimulatorShell` mounts DOM listeners (`useInputs`), a fixed full-viewport canvas layer, a tall scroll spacer (24 screens = one loop of the railway round the range), the `HUD`, the `ProjectDock`, and a screen-reader-only project list.
 3. `WorldCanvas` (lazy, in the `three` chunk) loads `meta.json` and `shared.glb` plus the Dozer, then streams the other districts nearest-first (the `backdrop` terrain disc first, since its center is the hub, then the four sectors of the ring of sites) and mounts the runtime instancers, the sky dome and the sun.
 4. `CameraRig` is the frame loop: integrates the drive and flight models, places the camera for the current mode, runs zone proximity, culls districts by distance (`contract.world.cullDistanceMeters`, 800 m, never the backdrop), respawns the Dozer after 0.6 s with no ground under it (off the disc or in a lake), samples stats.

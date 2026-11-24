@@ -1,9 +1,9 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import { CanvasErrorBoundary } from "../components/CanvasErrorBoundary";
 import { projects } from "../content/projects";
 import { useIdleMount } from "../lib/useIdleMount";
+import { CanvasErrorBoundary } from "./CanvasErrorBoundary.tsx";
 import { RAIL_SCREENS, useInputs } from "./controls/useInputs.ts";
-import { StaticPortfolio } from "./fallback/StaticPortfolio.tsx";
+import { SimulatorNotice } from "./fallback/SimulatorNotice.tsx";
 import { useSimulatorCapability } from "./fallback/useSimulatorCapability.ts";
 import { HopBar } from "./overlay/HopBar.tsx";
 import { HUD } from "./overlay/HUD.tsx";
@@ -40,7 +40,7 @@ function SimulatorShell({ reducedMotion }: { reducedMotion: boolean }) {
     sim.set({ reducedMotion });
   }, [reducedMotion]);
 
-  if (failed) return <StaticPortfolio />;
+  if (failed) return <SimulatorNotice />;
 
   return (
     <>
@@ -67,22 +67,7 @@ function SimulatorShell({ reducedMotion }: { reducedMotion: boolean }) {
   );
 }
 
-/** Offered only for reduced motion: the world then cuts instead of gliding. */
-function EnterAnyway({ onEnter }: { onEnter: () => void }) {
-  return (
-    <div className="fixed right-4 bottom-4 z-40">
-      <button
-        type="button"
-        onClick={onEnter}
-        className="rounded-lg border border-border bg-surface/90 px-3 py-2 font-mono text-xs text-muted shadow-sm backdrop-blur transition-colors hover:border-accent hover:text-accent"
-      >
-        enter the simulator anyway (no camera glides)
-      </button>
-    </div>
-  );
-}
-
-/** Entry point: the world for those who can run it, the page for the rest. */
+/** Entry point: the world for those who can run it, a notice for the rest. */
 export function SimulatorRoot() {
   const capability = useSimulatorCapability();
   const [enterAnyway, setEnterAnyway] = useState(false);
@@ -93,11 +78,10 @@ export function SimulatorRoot() {
     return <SimulatorShell reducedMotion />;
   }
   return (
-    <>
-      <StaticPortfolio />
-      {capability === "reduced-motion" ? (
-        <EnterAnyway onEnter={() => setEnterAnyway(true)} />
-      ) : null}
-    </>
+    <SimulatorNotice
+      onEnter={
+        capability === "reduced-motion" ? () => setEnterAnyway(true) : undefined
+      }
+    />
   );
 }

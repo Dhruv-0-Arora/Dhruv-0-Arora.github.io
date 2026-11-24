@@ -24,7 +24,7 @@ Add new entries at the bottom with the date; do not rewrite old ones.
 - **Zones may overlap; a closer containing zone takes over at once**, while a single zone keeps 1.25r exit hysteresis. Needed because the hex map is the floor under the Nazar graph.
 - **Look `t` is derived, not hand-tuned.** The exporter sets each look's rail parameter to the nearest rail point; only the hub pins `t` to 0 and 1.
 - **Scroll maps to the rail through a 14-screen spacer.** Programmatic returns from driving set the scroll position to the rail t, so the two never disagree.
-- **Mobile is rails-only**; the wheel needs `(hover: hover) and (pointer: fine)`. Below 380 px, or without WebGL, the static page serves. Reduced motion serves the static page with an opt-in that replaces every camera glide with a cut.
+- **Mobile is rails-only**; the wheel needs `(hover: hover) and (pointer: fine)`. Below 380 px, or without WebGL, a notice links to the plain site. Reduced motion serves the notice with an opt-in that replaces every camera glide with a cut.
 - **Out of bounds means "off `col.ground` for 0.6 s"**, then a respawn at the nearest rail point with a HUD line, rather than invisible walls.
 
 ## Pipeline and repo

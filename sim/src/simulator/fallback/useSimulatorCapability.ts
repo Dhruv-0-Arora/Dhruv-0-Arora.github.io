@@ -6,9 +6,9 @@ const REDUCED = "(prefers-reduced-motion: reduce)";
 export const MIN_WIDTH = 380;
 
 /**
- * Why a visitor gets the static page. `reduced-motion` is the only reason
- * they may override: the simulator then cuts between rail points instead
- * of gliding.
+ * Why a visitor gets the notice instead of the world. `reduced-motion` is
+ * the only reason they may override: the simulator then cuts between rail
+ * points instead of gliding.
  */
 export type Capability = "simulator" | "reduced-motion" | "narrow" | "no-webgl";
 

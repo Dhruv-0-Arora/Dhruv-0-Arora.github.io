@@ -40,7 +40,7 @@ function subscribe(listener: () => void) {
 }
 
 /** Sets the `dark` class on <html> and tells useTheme subscribers if it changed. */
-export function applyTheme(theme: Theme): void {
+function applyTheme(theme: Theme): void {
   if (currentTheme() === theme) return;
   document.documentElement.classList.toggle("dark", theme === "dark");
   for (const l of listeners) l();

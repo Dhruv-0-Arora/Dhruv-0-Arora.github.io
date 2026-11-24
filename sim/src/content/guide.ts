@@ -1,11 +1,10 @@
 /** Copy for the how-to panel shown at the hub. Keys are rendered as keycaps. */
-export interface GuideStep {
+interface GuideStep {
   keys: string[];
   text: string;
 }
 
 export interface Guide {
-  kicker: string;
   title: string;
   intro: string;
   steps: GuideStep[];
@@ -17,7 +16,6 @@ export interface Guide {
 }
 
 export const guide: Guide = {
-  kicker: "the simulator",
   title: "How to ride the range",
   intro:
     "This portfolio is a mountain range. Every summit, shoulder and lakeshore holds a real project, and a little railway climbs from the valley to each of them and back. The vehicle on the pad is a real robot CAD file parsed live in the browser, and the biplane above it is a 1903 Flyer at full size.",
@@ -55,7 +53,7 @@ export const guide: Guide = {
 };
 
 /** One line of the first-visit note: a key and what it does. */
-export interface VehicleLine {
+interface VehicleLine {
   key: string;
   text: string;
 }
