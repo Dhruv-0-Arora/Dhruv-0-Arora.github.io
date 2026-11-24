@@ -82,10 +82,14 @@ function GuideBody({ hasKeyboard }: { hasKeyboard: boolean }) {
       </dl>
       <p className="term-p term-muted">{guide.outro}</p>
       <dl className="term-links">
-        <dt>{guide.photos.label}</dt>
-        <dd>
-          <a href={guide.photos.href}>{guide.photos.href}</a>
-        </dd>
+        {[guide.photos, guide.plainSite].map(({ label, href }) => (
+          <div key={label} className="contents">
+            <dt>{label}</dt>
+            <dd>
+              <a href={href}>{href}</a>
+            </dd>
+          </div>
+        ))}
       </dl>
     </>
   );

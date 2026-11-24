@@ -41,12 +41,6 @@ export default defineConfig({
     outDir: resolve(import.meta.dirname, "../dist/sim"),
     emptyOutDir: true,
     rolldownOptions: {
-      // The simulator at /sim/, and a plain photo page at /sim/gallery/ that
-      // never loads three.js.
-      input: {
-        main: resolve(import.meta.dirname, "index.html"),
-        gallery: resolve(import.meta.dirname, "gallery/index.html"),
-      },
       output: {
         codeSplitting: {
           groups: [

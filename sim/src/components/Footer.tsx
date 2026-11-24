@@ -28,7 +28,7 @@ export function Footer() {
               Resume
             </a>
           </div>
-          <div className="mt-10 flex justify-center gap-5">
+          <div className="mt-10 flex flex-wrap justify-center gap-x-5 gap-y-2">
             {socials.map(({ label, href }) => (
               <a
                 key={label}
@@ -40,15 +40,18 @@ export function Footer() {
                 {label.toLowerCase()}
               </a>
             ))}
-            <a
-              href={profile.galleryHref}
-              className="font-mono text-[13px] text-faint transition-colors hover:text-accent"
-            >
-              photos
-            </a>
+            {[profile.photos, profile.plainSite].map(({ label, href }) => (
+              <a
+                key={label}
+                href={href}
+                className="font-mono text-[13px] text-faint transition-colors hover:text-accent"
+              >
+                {label}
+              </a>
+            ))}
           </div>
           <p className="mt-12 font-mono text-xs text-faint">
-            built with react + three.js, deployed on vercel
+            built with react + three.js
           </p>
           <p className="mt-2 font-mono text-xs text-faint">
             © {new Date().getFullYear()} Dhruv Arora

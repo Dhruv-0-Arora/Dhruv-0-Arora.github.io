@@ -1,5 +1,3 @@
-import { withBase } from "../lib/base";
-
 /** Copy for the how-to panel shown at the hub. Keys are rendered as keycaps. */
 export interface GuideStep {
   keys: string[];
@@ -14,6 +12,8 @@ export interface Guide {
   outro: string;
   /** Where the rest of the photos live, as a label and a same-site path. */
   photos: { label: string; href: string };
+  /** The plain HTML version of the site, as a label and a same-site path. */
+  plainSite: { label: string; href: string };
 }
 
 export const guide: Guide = {
@@ -50,7 +50,8 @@ export const guide: Guide = {
   ],
   outro:
     "Each site opens this panel with the project you are next to. The photos circling above the pad are mine, from Chicago, and the range borrows its peaks: astute sits on the summit of Adams, Synthesis on the shoulder of Rainier. Mount Adams is climbed; Rainier is next. The range runs in daylight or at night to match the hour on your clock.",
-  photos: { label: "photos", href: withBase("gallery/") },
+  photos: { label: "photos", href: "/gallery/" },
+  plainSite: { label: "plain site", href: "/" },
 };
 
 /** One line of the first-visit note: a key and what it does. */

@@ -1,5 +1,6 @@
 /**
- * Prepares photos for the hub carousel and the /sim/gallery/ page.
+ * Prepares photos for the hub carousel and the /gallery/ page, which the
+ * Rust site generates from `content/gallery.md`.
  *
  *   node scripts/build-media.ts                # assets/gallery/*.{jpg,jpeg,png,webp} -> ../static/photos/
  *   node scripts/build-media.ts --from DIR     # another source directory
@@ -10,14 +11,15 @@
  * - `<slug>.jpg`, cover-fitted to the carousel's 3:2 frame at 1280 x 853,
  *   a progressive JPEG. It doubles as the photo's link preview image.
  * - `full/<slug>-<w>.webp` at its own aspect, with the long edge at each
- *   of `LONG_EDGES` the original can fill, for the gallery's srcset and
- *   lightbox. Sizing by the long edge keeps a full-screen portrait no
+ *   of `LONG_EDGES` the original can fill, for the gallery page's srcset
+ *   and lightbox. Sizing by the long edge keeps a full-screen portrait no
  *   heavier than a full-screen landscape.
  *
  * Metadata is stripped (no GPS, no camera serials) and colour converted to
  * sRGB. `../static/photos/` is wholly derived, so it is cleared first.
  * Originals stay out of git; the outputs are committed. Prints a
- * `gallery.ts` entry per photo to paste into `src/content/gallery.ts`.
+ * `[[photos]]` record per photo for `content/gallery.md`; a slug listed in
+ * `src/content/gallery.ts` puts that photo on the carousel.
  * Runs under Node for the same reason as `build-world.ts`: `sharp` is
  * native.
  */
@@ -90,11 +92,9 @@ async function main(): Promise<number> {
       sizes.push(`${w}w ${kb(out.size)}`);
     }
     console.log(`${file} -> ${slug} (${sizes.join(", ")})`);
-    entries.push(
-      `  { slug: "${slug}", width: ${src.width}, height: ${src.height}, widths: [${widths.join(", ")}], alt: "", place: "" },`,
-    );
+    entries.push(`[[photos]]\nslug = "${slug}"\nalt = ""\nplace = ""\n`);
   }
-  console.log("\nsrc/content/gallery.ts entries (fill in alt and place):\n");
+  console.log("\ncontent/gallery.md records (fill in alt and place):\n");
   console.log(entries.join("\n"));
   return 0;
 }
