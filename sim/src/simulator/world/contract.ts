@@ -70,7 +70,7 @@ export type District = (typeof DISTRICTS)[number];
 export type ZoneSlug = (typeof ZONE_SLUGS)[number];
 export type TokenName = (typeof TOKENS)[number];
 
-export interface TriBudgets {
+interface TriBudgets {
   districts: Record<District, number>;
   installations: Record<string, number>;
   installationDefault: number;
@@ -80,7 +80,7 @@ export interface TriBudgets {
   ceiling: number;
 }
 
-export interface ByteBudgets {
+interface ByteBudgets {
   districts: Record<District, number>;
   totalSoft: number;
   totalHard: number;
@@ -113,10 +113,6 @@ export const contractSource: {
   zones: string[];
   materials: { tokens: string[] };
 } = contractJson;
-
-export function isDistrict(value: string): value is District {
-  return (DISTRICTS as readonly string[]).includes(value);
-}
 
 export function isZoneSlug(value: string): value is ZoneSlug {
   return (ZONE_SLUGS as readonly string[]).includes(value);

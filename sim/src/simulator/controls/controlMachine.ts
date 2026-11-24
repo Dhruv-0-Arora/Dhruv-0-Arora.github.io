@@ -13,8 +13,7 @@ export type ControlEvent =
   | { type: "TAKE_OFF" }
   | { type: "RELEASE" }
   | { type: "LAND" }
-  | { type: "RETURNED" }
-  | { type: "DISABLE" };
+  | { type: "RETURNED" };
 
 export interface ControlContext {
   /** False on touch-only devices or before the world and Dozer are loaded. */
@@ -26,13 +25,12 @@ const TABLE: Record<
   Partial<Record<ControlEvent["type"], ControlMode>>
 > = {
   rails: { TAKE_WHEEL: "driving", TAKE_OFF: "flying" },
-  driving: { RELEASE: "returning", DISABLE: "returning" },
-  flying: { LAND: "returning", DISABLE: "returning" },
+  driving: { RELEASE: "returning" },
+  flying: { LAND: "returning" },
   returning: {
     RETURNED: "rails",
     TAKE_WHEEL: "driving",
     TAKE_OFF: "flying",
-    DISABLE: "returning",
   },
 };
 

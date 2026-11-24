@@ -21,14 +21,14 @@ export const RAIL_SCREENS = 16;
 const KEYBOARD_QUERY = "(hover: hover) and (pointer: fine)";
 
 /** Vertical finger travel that makes a swipe a hop, px. */
-export const SWIPE_PX = 40;
+const SWIPE_PX = 40;
 
 /**
  * Whether an event target sits inside something that scrolls on its own
  * (the project panel), and can still scroll in the direction asked
  * (`dy` > 0 is down). Those keep their native wheel, touch and keys.
  */
-export function insideScrollable(
+function insideScrollable(
   target: EventTarget | null,
   dy: number,
 ): {

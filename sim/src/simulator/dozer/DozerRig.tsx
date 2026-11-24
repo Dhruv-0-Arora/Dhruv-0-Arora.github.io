@@ -8,8 +8,8 @@ import { sim } from "../simStore.ts";
  * real robot is about 1.1 m; in the world it drives at 2 m so it reads
  * from the rails and holds its own against the installations.
  */
-export const DOZER_LENGTH = 2.0;
-export const DOZER_SCALE = DOZER_LENGTH / 1.6;
+const DOZER_LENGTH = 2.0;
+const DOZER_SCALE = DOZER_LENGTH / 1.6;
 
 /** Rotation added to the drive heading so the CAD front faces forward. */
 export const DOZER_YAW_OFFSET = 0;

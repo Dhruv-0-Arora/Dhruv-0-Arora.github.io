@@ -54,7 +54,7 @@ export interface TerraceMeta {
  * metres, turned by `yaw` about +Y (installations face the hub, so their
  * walls are rarely axis-aligned).
  */
-export interface BoxColliderMeta {
+interface BoxColliderMeta {
   name: string;
   center: Vec3;
   half: Vec3;

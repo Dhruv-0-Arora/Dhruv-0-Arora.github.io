@@ -22,7 +22,7 @@ export const RAMP_IMPORTANCE: readonly TokenName[] = [
 ];
 
 /** Authored dirnt meshes take the gradient's dark end; instances shade it. */
-export const GRADIENT_TOKENS: Record<string, TokenName> = {
+const GRADIENT_TOKENS: Record<string, TokenName> = {
   dirnt: "hue-green",
 };
 
@@ -34,7 +34,7 @@ const NIGHT_EMISSIVE = 0.55;
  * close to black and would swallow any moonlight. Lift it toward the muted
  * tone by this much so moon shadows have something to fall on.
  */
-export const NIGHT_GROUND_LIFT = 0.22;
+const NIGHT_GROUND_LIFT = 0.22;
 
 export function bindingToken(binding: MaterialBinding): TokenName {
   switch (binding.kind) {

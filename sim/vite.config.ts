@@ -8,10 +8,9 @@ const STATIC = resolve(import.meta.dirname, "../static");
 const TYPES: Record<string, string> = {
   ".jpg": "image/jpeg",
   ".webp": "image/webp",
-  ".pdf": "application/pdf",
 };
 
-// The Rust site owns /photos and /resume; in dev, serve its static/ at the root.
+// The Rust site owns /photos; in dev, serve its static/ at the root.
 function rootStatic(): Plugin {
   return {
     name: "root-static",

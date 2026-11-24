@@ -46,7 +46,7 @@ export interface LightTargets {
  * cool moon at a bit under a third of it, so shadows stay clearly there
  * while the wash from the sky and the ambient keep shaded faces legible.
  */
-export function lightTargets(palette: Palette): LightTargets {
+function lightTargets(palette: Palette): LightTargets {
   const night = palette.bg.r < 0.5;
   const sky = toColor(palette["hue-sky"]);
   const bg = toColor(palette.bg);

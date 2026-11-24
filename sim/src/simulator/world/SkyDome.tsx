@@ -146,7 +146,7 @@ interface SkyTargets {
 }
 
 /** Sky colors derive from the palette so both themes stay on brand. */
-export function skyTargets(palette: Palette): SkyTargets {
+function skyTargets(palette: Palette): SkyTargets {
   const night = palette.bg.r < 0.5;
   const bg = toColor(palette.bg);
   const sky = toColor(palette["hue-sky"]);

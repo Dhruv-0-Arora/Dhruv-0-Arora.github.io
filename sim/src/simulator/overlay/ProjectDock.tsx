@@ -27,7 +27,7 @@ const TERM_HUE: Record<Hue, string> = {
   amber: "var(--t-orange)",
 };
 
-export function termHue(hue?: Hue): string {
+function termHue(hue?: Hue): string {
   return hue ? TERM_HUE[hue] : "var(--t-green)";
 }
 

@@ -22,7 +22,6 @@ export interface SimSnapshot {
   dozerReady: boolean;
   /** District currently streaming in, for the "LOADING SECTOR" line. */
   loading: District | null;
-  loaded: readonly District[];
   /** Keyboard-and-pointer device; touch-only visitors stay on rails. */
   hasKeyboard: boolean;
   /** Visitor prefers reduced motion but entered anyway: cut, never glide. */
@@ -66,7 +65,6 @@ const initial: SimSnapshot = {
   worldReady: false,
   dozerReady: false,
   loading: null,
-  loaded: [],
   hasKeyboard: false,
   reducedMotion: false,
   palette: null,

@@ -8,7 +8,7 @@
 #   nix shell nixpkgs#ffmpeg -c scripts/transcode-media.sh orion.gif
 #
 # Output is 1280 px wide, 24 fps, muted, with a VP9 webm as the primary and an
-# H.264 mp4 as the fallback. Then set `src: "/media/<zone>.webm"` on the
+# H.264 mp4 as the fallback. Then set `src: withBase("media/<zone>.webm")` on the
 # screen's entry in src/simulator/world/zoneScreens.ts.
 set -euo pipefail
 

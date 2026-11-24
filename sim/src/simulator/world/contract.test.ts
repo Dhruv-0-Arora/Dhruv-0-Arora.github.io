@@ -3,7 +3,6 @@ import {
   contract,
   contractSource,
   DISTRICTS,
-  isDistrict,
   isToken,
   isZoneSlug,
   TOKENS,
@@ -41,8 +40,6 @@ describe("contract", () => {
   });
 
   it("exposes type guards", () => {
-    expect(isDistrict("terminal")).toBe(true);
-    expect(isDistrict("Terminal")).toBe(false);
     expect(isZoneSlug("astute")).toBe(true);
     expect(isZoneSlug("orion-2")).toBe(false);
     expect(isToken("hue-green")).toBe(true);

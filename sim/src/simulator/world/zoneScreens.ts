@@ -12,7 +12,7 @@ export interface ZoneScreenSpec {
   offset: Vec3;
   /** Width and height in meters, 16:9. */
   size: [number, number];
-  /** `/media/<zone>.webm` once the clip exists; the placeholder until then. */
+  /** `withBase("media/<zone>.webm")` once the clip exists; the placeholder until then. */
   src?: string;
 }
 

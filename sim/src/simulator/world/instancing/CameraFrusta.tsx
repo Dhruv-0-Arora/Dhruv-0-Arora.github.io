@@ -4,7 +4,7 @@ import * as THREE from "three";
 import { useSim } from "../../simStore.ts";
 import type { ZoneMeta } from "../meta.ts";
 
-export const FRUSTA_COUNT = 40;
+const FRUSTA_COUNT = 40;
 const POLE_H = 7.5;
 const POLE_R = 0.16;
 const CONE_LEN = 5.5;

@@ -22,11 +22,11 @@ export const TRAIL_MAP = {
 
 /** Full width of the tread and the soft margin beyond it, in metres. */
 export const TRAIL_WIDTH = 3.5;
-export const TRAIL_EDGE = 1.0;
+const TRAIL_EDGE = 1.0;
 /** Spacing of the splats walked along a trail, in metres. */
 const TRAIL_STEP = 0.4;
 /** The gravel shore as multiples of a lake's water radius. */
-export const SHORE_BAND = { from: 0.95, full: 1.02, fade: 1.15, to: 1.35 };
+const SHORE_BAND = { from: 0.95, full: 1.02, fade: 1.15, to: 1.35 };
 /** Trees keep this far from a lake, as a multiple of its water radius. */
 export const LAKE_TREE_CLEARANCE = 1.25;
 

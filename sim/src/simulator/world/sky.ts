@@ -36,6 +36,3 @@ export function galacticPole(): THREE.Vector3 {
     -Math.cos(elevation) * Math.cos(azimuth),
   ).normalize();
 }
-
-/** Where the sky dome draws the sun or moon, in meters from the camera. */
-export const SUN_DISTANCE = 700;

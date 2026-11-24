@@ -26,7 +26,7 @@ export function hopDuration(metres: number): number {
 }
 
 /** Keys that jump to the next or previous station while on rails. */
-export const NEXT_KEYS: ReadonlySet<string> = new Set([
+const NEXT_KEYS: ReadonlySet<string> = new Set([
   "ArrowRight",
   "ArrowDown",
   "PageDown",
@@ -35,7 +35,7 @@ export const NEXT_KEYS: ReadonlySet<string> = new Set([
   "BracketRight",
   "KeyJ",
 ]);
-export const PREV_KEYS: ReadonlySet<string> = new Set([
+const PREV_KEYS: ReadonlySet<string> = new Set([
   "ArrowLeft",
   "ArrowUp",
   "PageUp",
@@ -93,7 +93,7 @@ function browserHost(): ScrollHost {
   };
 }
 
-export function easeInOutCubic(u: number): number {
+function easeInOutCubic(u: number): number {
   return u < 0.5 ? 4 * u * u * u : 1 - (-2 * u + 2) ** 3 / 2;
 }
 

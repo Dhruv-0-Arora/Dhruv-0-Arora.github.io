@@ -52,7 +52,7 @@ export function sampleRoute(
 }
 
 /** Fraction of a cycle spent resting on the summit. */
-export const SUMMIT_HOLD = 0.12;
+const SUMMIT_HOLD = 0.12;
 
 /**
  * Where along the route a climber is at time `t`: up for the first

@@ -7,7 +7,7 @@ import { MaterialRegistry } from "../theme/retint.ts";
 import { contract, type District } from "./contract.ts";
 import { parseWorldMeta, type WorldMeta } from "./meta.ts";
 
-export const WORLD_URL = withBase("world");
+const WORLD_URL = withBase("world");
 
 export interface LoadedDistrict {
   district: District;
@@ -34,7 +34,7 @@ let loader: GLTFLoader | null = null;
 const GROUND_NAME = THREE.PropertyBinding.sanitizeNodeName("col.ground");
 const BOX_PREFIX = THREE.PropertyBinding.sanitizeNodeName("col.box.");
 
-export function isColliderName(name: string): boolean {
+function isColliderName(name: string): boolean {
   return name === GROUND_NAME || name.startsWith(BOX_PREFIX);
 }
 

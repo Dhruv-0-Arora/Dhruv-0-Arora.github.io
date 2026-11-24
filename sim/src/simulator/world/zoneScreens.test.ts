@@ -19,7 +19,7 @@ describe("ZONE_SCREENS", () => {
 
   it("only points at web video when a source is set", () => {
     for (const s of ZONE_SCREENS) {
-      if (s.src) expect(s.src).toMatch(/^\/media\/.+\.(webm|mp4)$/);
+      if (s.src) expect(s.src).toMatch(/\/media\/.+\.(webm|mp4)$/);
     }
   });
 });

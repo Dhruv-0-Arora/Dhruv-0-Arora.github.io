@@ -11,7 +11,7 @@ import {
 import type { ZoneMeta } from "../meta.ts";
 import { type HexCell, hexLayout } from "./hexGrid.ts";
 
-export const HEX_RADIUS = 1.55;
+const HEX_RADIUS = 1.55;
 const HEX_HEIGHT = 0.22;
 const GAP = 0.9;
 /** Hexes within this distance of the probe light up. */

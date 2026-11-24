@@ -130,7 +130,7 @@ function WorldScene() {
           const loaded = await loadDistrict(district, world.registry);
           if (cancelled) return;
           setDistricts((prev) => [...prev, loaded]);
-          sim.set({ loaded: [...sim.get().loaded, district], loading: null });
+          sim.set({ loading: null });
         } catch (err) {
           console.error(`[world] failed to load ${district}`, err);
           sim.set({ loading: null });

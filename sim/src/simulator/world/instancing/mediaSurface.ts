@@ -20,7 +20,7 @@ function css(c: Rgb, alpha = 1): string {
 }
 
 /** Scales texture uv so an image of any aspect covers a frame of `aspect`. */
-export function coverFit(texture: THREE.Texture, aspect: number): void {
+function coverFit(texture: THREE.Texture, aspect: number): void {
   const image = texture.image as
     | {
         width?: number;

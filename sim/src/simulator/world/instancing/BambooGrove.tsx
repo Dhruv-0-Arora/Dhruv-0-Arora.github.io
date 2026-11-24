@@ -10,7 +10,7 @@ import {
 } from "../../theme/oklab.ts";
 import type { ZoneMeta } from "../meta.ts";
 
-export const BAMBOO_COUNT = 300;
+const BAMBOO_COUNT = 300;
 const SEGMENTS = 5;
 const SEGMENT_H = 1.0;
 const STALK_R = 0.11;

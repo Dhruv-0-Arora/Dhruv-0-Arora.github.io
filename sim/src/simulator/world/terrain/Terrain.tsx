@@ -25,7 +25,7 @@ interface Targets {
 }
 
 /** Surface colors from the palette; the meadow is a warmer, lighter forest. */
-export function terrainTargets(palette: Palette): Targets {
+function terrainTargets(palette: Palette): Targets {
   const night = palette.bg.r < 0.5;
   const forest = toColor(palette.forest);
   const meadow = forest

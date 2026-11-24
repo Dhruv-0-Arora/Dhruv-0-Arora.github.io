@@ -4,7 +4,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { useSim } from "../../simStore.ts";
 import { forestWeight } from "../terrain/terrainField.ts";
 
-export const MAX_TREES = 12000;
+const MAX_TREES = 12000;
 /** Square meters of fully forested slope per tree. */
 const AREA_PER_TREE = 34;
 const TREE_H = 5.2;

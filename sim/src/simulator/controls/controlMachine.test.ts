@@ -14,7 +14,6 @@ const EVENTS: ControlEvent["type"][] = [
   "RELEASE",
   "LAND",
   "RETURNED",
-  "DISABLE",
 ];
 
 describe("transition", () => {
@@ -25,25 +24,21 @@ describe("transition", () => {
       "rails+RELEASE": "rails",
       "rails+LAND": "rails",
       "rails+RETURNED": "rails",
-      "rails+DISABLE": "rails",
       "driving+TAKE_WHEEL": "driving",
       "driving+TAKE_OFF": "driving",
       "driving+RELEASE": "returning",
       "driving+LAND": "driving",
       "driving+RETURNED": "driving",
-      "driving+DISABLE": "returning",
       "flying+TAKE_WHEEL": "flying",
       "flying+TAKE_OFF": "flying",
       "flying+RELEASE": "flying",
       "flying+LAND": "returning",
       "flying+RETURNED": "flying",
-      "flying+DISABLE": "returning",
       "returning+TAKE_WHEEL": "driving",
       "returning+TAKE_OFF": "flying",
       "returning+RELEASE": "returning",
       "returning+LAND": "returning",
       "returning+RETURNED": "rails",
-      "returning+DISABLE": "returning",
     };
     for (const mode of MODES) {
       for (const type of EVENTS) {

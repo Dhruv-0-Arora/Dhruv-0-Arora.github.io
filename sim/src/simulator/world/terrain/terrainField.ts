@@ -22,7 +22,7 @@ export const TERRAIN = {
 
 const fract = (v: number) => v - Math.floor(v);
 
-export function smoothstep(a: number, b: number, x: number): number {
+function smoothstep(a: number, b: number, x: number): number {
   const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
 }
