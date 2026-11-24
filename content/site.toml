@@ -18,6 +18,11 @@ href = "https://github.com/Dhruv-0-Arora"
 text = "Dhruv-0-Arora"
 
 [[elsewhere]]
+label = "codeberg"
+href = "https://codeberg.org/DhruvArora"
+text = "DhruvArora"
+
+[[elsewhere]]
 label = "linkedin"
 href = "https://www.linkedin.com/in/dhruv0arora"
 text = "dhruv0arora"

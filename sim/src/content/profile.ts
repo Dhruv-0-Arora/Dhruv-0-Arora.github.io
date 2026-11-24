@@ -25,6 +25,7 @@ export const profile = {
 
 export const socials: SocialLink[] = [
   { label: "GitHub", href: "https://github.com/Dhruv-0-Arora" },
+  { label: "Codeberg", href: "https://codeberg.org/DhruvArora" },
   { label: "LinkedIn", href: "https://www.linkedin.com/in/dhruv0arora" },
   { label: "Email", href: "mailto:a_dhruv@outlook.com" },
 ];
